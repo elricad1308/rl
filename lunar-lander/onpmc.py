@@ -46,11 +46,18 @@ class OnPolicyMonteCarlo(object):
               the return.
 
         """
+        # Episode count for the agent
+        self.episode = 0
+
         # Epsilon attribute for the epsilon-greedy policy.
         self.epsilon = epsilon
 
         # Gamma attribute for the return formula.
         self.gamma = gamma
+
+        # Dictionary containing the amount of times each pair state
+        # and action is selected.
+        self.n = dict()
 
         # Dictionary containing the policy. It contains as keys all
         # seen states IDs, and as values de greedy action for that
@@ -100,11 +107,53 @@ class OnPolicyMonteCarlo(object):
 
         return ' '.join(t)
 
-    def debug(self):
+    def debug(self, ret):
         """Print debug information."""
+        e = self.episode
+        r = ret
         num_states = len(self.states)
 
-        print(f"Agent known {num_states} states")
+        print(f"Episode {e}:\tTotal reward:{r}\tStates known {num_states}")
+
+    def policy_evaluation(self):
+        """Evaluate and update the current policy."""
+        G = 0
+
+        # Iterates for each time step
+        for t, state in enumerate(self.visited):
+            # Last state does not have a reward
+            if t < len(self.visited) - 1:
+                # Update the return for time t
+                G = (self.gamma * G) + self.rewards[t + 1]
+
+                s_t = state
+                a_t = self.actions[t]
+                q_n = self.q[s_t][a_t]
+                n = self.n[s_t][a_t]
+
+                # Updates the q(s, a) estimate
+                self.q[s_t][a_t] = q_n + (1.0 / n) * (G - q_n)
+
+                # Finds the action with max q(s, a)
+                max_a = 0
+                max_q = self.q[s_t][0]
+
+                for a in range(LUNAR_LANDING_ACTIONS):
+                    if(self.q[s_t][a] > max_q):
+                        max_q = self.q[s_t][a]
+                        max_a = a
+
+                # Updates the probabilities under the current policy
+                for a in range(LUNAR_LANDING_ACTIONS):
+                    x = self.epsilon / LUNAR_LANDING_ACTIONS
+                    if a == max_a:
+                        self.policy[s_t][a] = 1.0 - self.epsilon + x
+                    else:
+                        self.policy[s_t][a] = x
+
+        self.episode += 1
+
+        return G
 
     def reset(self):
         """Prepare the agent for a new episode.
@@ -121,6 +170,78 @@ class OnPolicyMonteCarlo(object):
 
         # List containing states VISITED in current episode
         self.visited = list()
+
+    def select_action(self, state_id):
+        """Apply an epsilon-soft policy to select an action.
+
+        With probability 1 - epsilon, the greedy action for the given
+        state_id is selected (based on the value of the estimates).
+
+        With probability epsilon, an action is selected randomly from
+        the current policy, using the probabilities stored for each
+        action.
+
+        Args:
+          state_id (int): the ID of the current state.
+
+        Returns:
+          (int): the action to perform on the current state, based on
+            an epsilon-soft policy.
+
+        """
+        # With probability 1 - epsilon, greedy action is chosed
+        if random.random() < (1.0 - self.epsilon):
+            action = 0
+            greedy_estimate = self.q[state_id][0]
+
+            for a in range(LUNAR_LANDING_ACTIONS):
+                if self.q[state_id][a] > greedy_estimate:
+                    greedy_estimate = self.q[state_id][a]
+                    action = a
+
+        # With probability epsilon, a random action is chosed
+        else:
+            coin_toss = random.random()
+            sum = self.policy[state_id][0]
+            action = 0
+
+            while sum < coin_toss:
+                action += 1
+                sum += self.policy[state_id][action]
+
+        return action
+
+    def step(self, obs, reward=None):
+        """Perform an entire time step of the agent.
+
+        First, the observation sent from the environment is 'hashed'
+        and transformed into a state.
+
+        Then, the visit to the state is registered, and an action is
+        selected by the policy for the agent to perform.
+
+        After that, if a reward is given, it is stored on the rewards
+        history for this episode.
+
+        Args:
+          obs (numpy.array): the observation sent by the enviroment.
+
+          [reward] (float): Optional. The reward sent from the
+            environment. Defaults to None.
+
+        """
+        state = self.create_state(obs)
+
+        action = self.visit_state(state)
+
+        # A reward of None indicates that this is the first time step.
+        if reward is not None:
+            self.rewards.append(reward)
+        # First time step has a reward of zero
+        else:
+            self.rewards.append(0)
+
+        return action
 
     def visit_state(self, state):
         """Register a visit to the given state.
@@ -161,25 +282,25 @@ class OnPolicyMonteCarlo(object):
             self.states[state] = state_id
 
             # A never-seen-before state obviously does not containg
-            # an action on the policy
+            # an action on the policy, and thus an equiprobable policy
+            # is created for it
+            self.policy[state_id] = np.full(LUNAR_LANDING_ACTIONS, 1.0 / LUNAR_LANDING_ACTIONS)
             action = random.randrange(0, LUNAR_LANDING_ACTIONS)
-            self.policy[state_id] = action
 
             # And also it does not have an estimate of the action-state
             # function nor the returns for any of the actions.
             self.q[state_id] = np.zeros(LUNAR_LANDING_ACTIONS)
-            # self.returns[state_id] = np.zeros(LUNAR_LANDING_ACTIONS)
+
+            # We also create the array to store the amount of times the
+            # state and each action are selected
+            self.n[state_id] = np.zeros(LUNAR_LANDING_ACTIONS)
         # Otherwise, recovers the state_id for that state, and gets a
         # epsilon-greedy action for it
         else:
             state_id = self.states[state]
 
-            # With probability 1 - epsilon, greedy action is chosed
-            if random.random() < (1.0 - self.epsilon):
-                action = self.policy[state_id]
-            # With probability epsilon, a random action is chosed
-            else:
-                action = random.randrange(0, LUNAR_LANDING_ACTIONS)
+            # Selects an action according to policy
+            action = self.select_action(state_id)
 
         # Adds the state_id to the episode's history
         self.visited.append(state_id)
@@ -187,33 +308,7 @@ class OnPolicyMonteCarlo(object):
         # Adds the selected action to the episode's history
         self.actions.append(action)
 
-        return action
-
-    def step(self, obs, reward=None):
-        """Perform an entire time step of the agent.
-
-        First, the observation sent from the environment is 'hashed'
-        and transformed into a state.
-
-        Then, the visit to the state is registered, and an action is
-        selected by the policy for the agent to perform.
-
-        After that, if a reward is given, it is stored on the rewards
-        history for this episode.
-
-        Args:
-          obs (numpy.array): the observation sent by the enviroment.
-
-          [reward] (float): Optional. The reward sent from the
-            environment. Defaults to None.
-
-        """
-        state = self.create_state(obs)
-
-        action = self.visit_state(state)
-
-        # A reward of None indicates that this is the first time step.
-        if reward is not None:
-            self.rewards.append(reward)
+        # Increase the number of times pair state-action is selected
+        self.n[state_id][action] += 1
 
         return action

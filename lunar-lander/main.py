@@ -3,21 +3,28 @@ sys.path.append("/usr/local/lib/python3.7/site-packages")
 import gym
 import onpmc
 
-env = gym.make('LunarLander-v2')
-observation = env.reset()
+def episode():
+    # Resets the environtment
+    obs = env.reset()
 
-algo = onpmc.OnPolicyMonteCarlo(0.05, 0.25)
-action = algo.step(observation)
+    # Choose initial action
+    action = algo.step(obs)
 
-def ff(action):
-    for i in range(24):
+    # This flag determines the end of the episode
+    done = False
+
+    while not done:
         env.render()
         obs, reward, done, info = env.step(action)
         action = algo.step(obs, reward)
-        algo.debug()
 
-        # x = obs[0]
-        # y = obs[1]
-        # state = algo.create_state(obs)
-        # print(f"Coordinates: ({x:.2f}, {y:.2f})\tReward: {reward:.2f}")
-        # print(f"State: {state}")
+    final_return = algo.policy_evaluation()
+
+    algo.debug(final_return)
+
+if __name__ == "__main__":
+    env = gym.make('LunarLander-v2')
+    algo = onpmc.OnPolicyMonteCarlo(0.05, 0.25)
+
+    for _ in range(2000):
+        episode()
