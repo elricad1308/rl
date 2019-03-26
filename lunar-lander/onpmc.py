@@ -1,3 +1,4 @@
+import pickle
 import random
 import numpy as np
 
@@ -115,6 +116,15 @@ class OnPolicyMonteCarlo(object):
 
         print(f"Episode {e}:\tTotal reward:{r}\tStates known {num_states}")
 
+    def load(self, filename):
+        data = pickle.load(open(filename, "rb"))
+
+        self.policy = data[0]
+        self.q = data[1]
+        self.states = data[2]
+
+        self.reset()
+
     def policy_evaluation(self):
         """Evaluate and update the current policy."""
         G = 0
@@ -170,6 +180,35 @@ class OnPolicyMonteCarlo(object):
 
         # List containing states VISITED in current episode
         self.visited = list()
+
+    def save(self, filename):
+        """Save the current state of the agent.
+
+        The info saved includes the policy, the action-value estimate
+        (q) and the list of known states.
+
+        The actions, rewards and visited states are not saved, since
+        they are only relevant for the current episode. The number
+        of episodes, value of epsilon, gamma and number of times each
+        action is selected neither are saved, since they are not
+        necesary for future iterations.
+
+        A list is created with the policy, the q estimate and the
+        states (in that order), and then the list is pickled on the
+        file with the given 'filename'.
+
+        Args:
+          filename (string): the name of the destiny file.
+
+        """
+        data = [
+          self.policy,
+          self.q,
+          self.states
+        ]
+
+        pickle.dump(data, open(filename, "wb"))
+
 
     def select_action(self, state_id):
         """Apply an epsilon-soft policy to select an action.
