@@ -341,6 +341,10 @@ class OnPolicyMonteCarlo(object):
             # Selects an action according to policy
             action = self.select_action(state_id)
 
+            # Actions loaded from save files does not have a history
+            if state_id not in self.n.keys():
+                self.n[state_id] = np.zeros(LUNAR_LANDING_ACTIONS)
+
         # Adds the state_id to the episode's history
         self.visited.append(state_id)
 
