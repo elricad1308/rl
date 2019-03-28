@@ -1,4 +1,5 @@
 *.pyo
 *.pyc
+/lunar-lander/*.bin
 /__pycache__
 /lunar-lander/__pycache__/**/*
