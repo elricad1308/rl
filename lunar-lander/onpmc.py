@@ -113,8 +113,18 @@ class OnPolicyMonteCarlo(object):
         e = self.episode
         r = ret
         num_states = len(self.states)
+        size_episode = len(self.visited)
 
-        print(f"Episode {e}:\tTotal reward:{r}\tStates known {num_states}")
+        perc_seen = (self.seen / size_episode) * 100
+        perc_unseen = (self.unseen / size_episode) * 100
+
+        print(
+          f"Episode {e}:\t"
+          f"Total reward:{r:.2f}\t"
+          f"Episode size: {size_episode} "
+          f"({perc_seen:.2f}% seen / {perc_unseen:.2f}% unseen)\t"
+          f"States known {num_states}"
+        )
 
     def load(self, filename):
         data = pickle.load(open(filename, "rb"))
@@ -178,6 +188,12 @@ class OnPolicyMonteCarlo(object):
         # List containing all rewards received on current episode.
         self.rewards = list()
 
+        # Number of previously seen states in current episode
+        self.seen = 0
+
+        # Number of new episodes created in current episode
+        self.unseen = 0
+
         # List containing states VISITED in current episode
         self.visited = list()
 
@@ -208,7 +224,6 @@ class OnPolicyMonteCarlo(object):
         ]
 
         pickle.dump(data, open(filename, "wb"))
-
 
     def select_action(self, state_id):
         """Apply an epsilon-soft policy to select an action.
@@ -333,6 +348,9 @@ class OnPolicyMonteCarlo(object):
             # We also create the array to store the amount of times the
             # state and each action are selected
             self.n[state_id] = np.zeros(LUNAR_LANDING_ACTIONS)
+
+            # Registers the state as unseen
+            self.unseen += 1
         # Otherwise, recovers the state_id for that state, and gets a
         # epsilon-greedy action for it
         else:
@@ -344,6 +362,9 @@ class OnPolicyMonteCarlo(object):
             # Actions loaded from save files does not have a history
             if state_id not in self.n.keys():
                 self.n[state_id] = np.zeros(LUNAR_LANDING_ACTIONS)
+
+            # Registers the state as seen
+            self.seen += 1
 
         # Adds the state_id to the episode's history
         self.visited.append(state_id)
