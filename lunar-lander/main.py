@@ -20,22 +20,22 @@ def episode():
         obs, reward, done, info = env.step(action)
         action = algo.step(obs, reward)
 
-    final_return = algo.policy_evaluation()
+    # final_return = algo.policy_evaluation()
 
-    algo.debug(final_return)
+    algo.debug(reward)
 
 
 if __name__ == "__main__":
     env = gym.make('LunarLander-v2')
-    algo = onpmc.OnPolicyMonteCarlo(0.05, 0.25)
+    algo = onpmc.OnPolicyMonteCarlo(0.05, 0.75)
 
-    #algo.load("run10000.bin")
+    algo.load("run150000.v1.bin")
 
-    for i in range(10000):
+    for i in range(1000):
         episode()
 
         # if i % 1000 == 0:
         #    algo.save("checkpoint.bin")
 
-    algo.save("run10000.v2.bin")
+    # algo.save("run10000.v2.bin")
     env.close()
