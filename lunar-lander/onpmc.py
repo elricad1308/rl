@@ -114,7 +114,7 @@ class OnPolicyMonteCarlo(object):
         for i, element in enumerate(obs):
             if i < 6:
                 n = int(round(element, 1) * 10)
-                state.append(n)
+                state.append(str(n))
         # t = tuple(f"{x:.1f}" for x in obs)
 
         # return ' '.join(t)
@@ -299,7 +299,8 @@ class OnPolicyMonteCarlo(object):
         """
         state = self.create_state(obs)
 
-        action = self.visit_state(state)
+        # action = self.visit_state(state)
+        action = self.sim_visit_state(state)
 
         # A reward of None indicates that this is the first time step.
         if reward is not None:
@@ -390,6 +391,21 @@ class OnPolicyMonteCarlo(object):
 
         return action
 
+    def sim_policy_evaluation(self):
+        """Evaluate and update the current policy."""
+        G = 0
+
+        # Iterates for each time step
+        for t, state in enumerate(self.visited):
+            # Last state does not have a reward
+            if t < len(self.visited) - 1:
+                G = (self.gamma * G) + self.rewards[t + 1]
+
+        self.episode += 1
+        self.success += 1 if G > 0 else 0
+
+        return G
+
     def sim_visit_state(self, state):
         """Register a visit to the given state.
 
@@ -426,23 +442,9 @@ class OnPolicyMonteCarlo(object):
         # the 'states' dictionary, and assigns it a numeric ID.
         if state not in self.states.keys():
             state_id = len(self.states)
-            # self.states[state] = state_id
 
-            # A never-seen-before state obviously does not containg
-            # an action on the policy, and thus an equiprobable policy
-            # is created for it
-            # self.policy[state_id] = np.full(LUNAR_LANDING_ACTIONS, 1.0 / LUNAR_LANDING_ACTIONS)
             action = random.randrange(0, LUNAR_LANDING_ACTIONS)
 
-            # And also it does not have an estimate of the action-state
-            # function nor the returns for any of the actions.
-            # self.q[state_id] = np.zeros(LUNAR_LANDING_ACTIONS)
-
-            # We also create the array to store the amount of times the
-            # state and each action are selected
-            # self.n[state_id] = np.zeros(LUNAR_LANDING_ACTIONS)
-
-            # Registers the state as unseen
             self.unseen += 1
         # Otherwise, recovers the state_id for that state, and gets a
         # epsilon-greedy action for it
@@ -464,8 +466,5 @@ class OnPolicyMonteCarlo(object):
 
         # Adds the selected action to the episode's history
         self.actions.append(action)
-
-        # Increase the number of times pair state-action is selected
-        # self.n[state_id][action] += 1
 
         return action
