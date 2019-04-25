@@ -26,7 +26,7 @@ if __name__ == "__main__":
     env = gym.make('LunarLander-v2')
     algo = onpmc.OnPolicyMonteCarlo(0.05, 0.25)
 
-    for _ in range(10000):
+    for _ in range(2000):
         episode()
 
     algo.save("run10000.bin")

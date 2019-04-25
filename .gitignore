@@ -1,0 +1,3 @@
+/**/*.pyc
+lunar-lander/__pycache__
+lunar-lander/__pycache__/*.pyc
