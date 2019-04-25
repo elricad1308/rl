@@ -74,6 +74,9 @@ class OnPolicyMonteCarlo(object):
         # order to make structures more efficient.
         self.states = dict()
 
+        # Cantidad de episodios 'exitosos' (con retorno positivo)
+        self.success = 0
+
         # Prepares the agent for a new episode.
         self.reset()
 
@@ -103,18 +106,38 @@ class OnPolicyMonteCarlo(object):
 
         """
         # To reduce the number of states, values from the observation
-        # are truncated to just 1 decimal
-        t = tuple(f"{x:.1f}" for x in obs)
+        # are truncated to just 1 decimal. Two last items of the
+        # observation indicate if legs had made contact, and are
+        # considered meaningless for this agent
+        state = []
 
-        return ' '.join(t)
+        for i, element in enumerate(obs):
+            if i < 6:
+                n = int(round(element, 1) * 10)
+                state.append(str(n))
+        # t = tuple(f"{x:.1f}" for x in obs)
+
+        # return ' '.join(t)
+        return '.'.join(state)
 
     def debug(self, ret):
         """Print debug information."""
         e = self.episode
         r = ret
         num_states = len(self.states)
+        size_episode = len(self.visited)
 
-        print(f"Episode {e}:\tTotal reward:{r}\tStates known {num_states}")
+        perc_seen = (self.seen / size_episode) * 100
+        perc_unseen = (self.unseen / size_episode) * 100
+
+        print(
+          f"Episode: {e}\t"
+          f"Reward: {r:.2f}\t"
+          f"Success: {self.success}\t"
+          f"Ep. size: {size_episode} "
+          f"({perc_seen:.2f}% seen / {perc_unseen:.2f}% unseen)\t"
+          f"States: {num_states}"
+        )
 
     def load(self, filename):
         data = pickle.load(open(filename, "rb"))
@@ -178,6 +201,12 @@ class OnPolicyMonteCarlo(object):
         # List containing all rewards received on current episode.
         self.rewards = list()
 
+        # Number of previously seen states in current episode
+        self.seen = 0
+
+        # Number of new episodes created in current episode
+        self.unseen = 0
+
         # List containing states VISITED in current episode
         self.visited = list()
 
@@ -208,7 +237,6 @@ class OnPolicyMonteCarlo(object):
         ]
 
         pickle.dump(data, open(filename, "wb"))
-
 
     def select_action(self, state_id):
         """Apply an epsilon-soft policy to select an action.
@@ -271,7 +299,8 @@ class OnPolicyMonteCarlo(object):
         """
         state = self.create_state(obs)
 
-        action = self.visit_state(state)
+        # action = self.visit_state(state)
+        action = self.sim_visit_state(state)
 
         # A reward of None indicates that this is the first time step.
         if reward is not None:
@@ -316,7 +345,7 @@ class OnPolicyMonteCarlo(object):
         """
         # If 'state' has been never seen before, then 'registers' it on
         # the 'states' dictionary, and assigns it a numeric ID.
-        if state not in self.states.keys():
+        if state not in self.states:
             state_id = len(self.states)
             self.states[state] = state_id
 
@@ -333,6 +362,9 @@ class OnPolicyMonteCarlo(object):
             # We also create the array to store the amount of times the
             # state and each action are selected
             self.n[state_id] = np.zeros(LUNAR_LANDING_ACTIONS)
+
+            # Registers the state as unseen
+            self.unseen += 1
         # Otherwise, recovers the state_id for that state, and gets a
         # epsilon-greedy action for it
         else:
@@ -340,6 +372,13 @@ class OnPolicyMonteCarlo(object):
 
             # Selects an action according to policy
             action = self.select_action(state_id)
+
+            # Actions loaded from save files does not have a history
+            if state_id not in self.n:
+                self.n[state_id] = np.zeros(LUNAR_LANDING_ACTIONS)
+
+            # Registers the state as seen
+            self.seen += 1
 
         # Adds the state_id to the episode's history
         self.visited.append(state_id)
@@ -349,5 +388,83 @@ class OnPolicyMonteCarlo(object):
 
         # Increase the number of times pair state-action is selected
         self.n[state_id][action] += 1
+
+        return action
+
+    def sim_policy_evaluation(self):
+        """Evaluate and update the current policy."""
+        G = 0
+
+        # Iterates for each time step
+        for t, state in enumerate(self.visited):
+            # Last state does not have a reward
+            if t < len(self.visited) - 1:
+                G = (self.gamma * G) + self.rewards[t + 1]
+
+        self.episode += 1
+        self.success += 1 if G > 0 else 0
+
+        return G
+
+    def sim_visit_state(self, state):
+        """Register a visit to the given state.
+
+        If the state is not known (that is, if it doesn't exist on the
+        'states' dict), then it is registered, and the next available
+        state ID is assigned to it. Then, the state is also added to
+        the 'policy' dict, with a random action selected as the greedy
+        action for the newly registered state. Finally, a new register
+        is also added to the 'q' dict, with all action-value estimates
+        for the new state set to zero.
+
+        On the other hand, if 'state' is known, then its ID is found on
+        the 'states' dict, and the epsilon-greedy policy is applied:
+        with probability (1 - e) the greedy action stored on the policy
+        for that state is selected, and with probability e a random
+        action is selected from [0, 3] (recall that the Lunar Landing
+        task has four defined actions).
+
+        Wether the state is known or not, it is added to the 'visited'
+        list for this episode, and the selected action is added to the
+        'actions' list.
+
+        For return value, the method returns the action to perform.
+
+        Args:
+          - state (string): the hash value of the visited state.
+
+        Returns:
+          (int): the action selected to perform by the policy of the
+            agent.
+
+        """
+        # If 'state' has been never seen before, then 'registers' it on
+        # the 'states' dictionary, and assigns it a numeric ID.
+        if state not in self.states.keys():
+            state_id = len(self.states)
+
+            action = random.randrange(0, LUNAR_LANDING_ACTIONS)
+
+            self.unseen += 1
+        # Otherwise, recovers the state_id for that state, and gets a
+        # epsilon-greedy action for it
+        else:
+            state_id = self.states[state]
+
+            # Selects an action according to policy
+            action = self.select_action(state_id)
+
+            # Actions loaded from save files does not have a history
+            if state_id not in self.n.keys():
+                self.n[state_id] = np.zeros(LUNAR_LANDING_ACTIONS)
+
+            # Registers the state as seen
+            self.seen += 1
+
+        # Adds the state_id to the episode's history
+        self.visited.append(state_id)
+
+        # Adds the selected action to the episode's history
+        self.actions.append(action)
 
         return action
