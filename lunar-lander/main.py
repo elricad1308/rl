@@ -11,8 +11,8 @@ import getopt
 # sys.path.append("/lustre/users/josea/.local/lib/python3.6/site-packages")
 
 import gym
-import onpmc as rl # On-policy Monte Carlo
-# import offpmc as rl # Off-policy Monte Carlo
+# import onpmc as rl # On-policy Monte Carlo
+import offpmc as rl # Off-policy Monte Carlo
 
 
 def episode():
@@ -69,8 +69,8 @@ def print_usage(small=True):
     if small:
         usage = (
           f"USAGE: main.py "
-          f"-e|--epsilon <epsilon> "
-          f"-g|--gamma <gamma> "
+          f"[-e|--epsilon <epsilon>] "
+          f"[-g|--gamma <gamma>] "
           f"[-i|--input <inputfile>] "
           f"[-o|--output <outputfile>] "
           f"[-c|--cycles <cycles>] "
@@ -82,8 +82,8 @@ def print_usage(small=True):
         usage = (
           f"main.py | Executes the Lunar Landing environment.\n"
           f"  Arguments:\n"
-          f"\t-e | --epsilon\t\t: Epsilon value for the algorithm.\n"
-          f"\t-g | --gamma\t\t: Gamma value for the algorithm.\n"
+          f"\t[-e | --epsilon]\t\t: Epsilon value for the algorithm.\n"
+          f"\t[-g | --gamma]\t\t: Gamma value for the algorithm.\n"
           f"\t[-i | --input <inputfile>]\t: Load agent from <inputfile>.\n"
           f"\t[-o | --output <outputfile>]\t: Save agent to <outputfile>.\n"
           f"\t[-c | --cycles <cycles>]\t\t: Number of episodes to run the simulation.\n"
@@ -114,8 +114,8 @@ if __name__ == "__main__":
         sys.exit(2)
 
     # Epsilon, gamma and episode values
-    epsilon = 0.0
-    gamma = 0.0
+    epsilon = 0.05
+    gamma = 0.9
     episodes = 1000
 
     # Flag to render the simulation

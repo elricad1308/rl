@@ -256,11 +256,23 @@ class Algorithm(object):
             )
 
     def policy_iteration(self, final_reward):
+        # Increase the episode count
+        self.episode += 1
+
         # Stores the final reward on the history
         self.rewards.append(final_reward)
 
-        # Increase the episode count
-        self.episode += 1
+        # If in test mode, there is nothing to do
+        if self.test_mode:
+            # Computes total reward for the episode
+            for r in self.rewards:
+                self.total_reward += r
+
+            # Positive total reward means a successful episode
+            if self.total_reward > 0:
+                self.success += 1
+
+            return
 
         # Variable that stores the return
         G = 0
@@ -304,8 +316,6 @@ class Algorithm(object):
 
             # Updates the target policy with the greedy action
             self.policy[state] = greedy_action
-
-            print(f"A_t = {action} , Greedy = {greedy_action}")
 
             # If greedy action was not selected, proceed to next episode
             if action != greedy_action:
@@ -435,7 +445,7 @@ class Algorithm(object):
             self.rewards.append(reward)
         # Stores a negative reward to use as the zero-index reward
         else:
-            self.rewards.append(-1)
+            self.rewards.append(0)
 
         return action
 
@@ -471,6 +481,9 @@ class Algorithm(object):
         """
         # If 'state' is unknown to the agent, registers it
         if state not in self.states:
+            # Assign the next available State ID
+            state_id = len(self.states)
+
             # Selects a random action as the greedy action for the
             # new state
             action = random.randrange(0, LUNAR_LANDING_ACTIONS)
@@ -480,9 +493,6 @@ class Algorithm(object):
 
             # Registers only occur if not in test mode
             if not self.test_mode:
-                # Assign the next available State ID
-                state_id = len(self.states)
-
                 # Registers the new state on the dict
                 self.states[state] = state_id
 
@@ -511,10 +521,10 @@ class Algorithm(object):
 
         # Registers only occur if not in test mode
         if not self.test_mode:
-            # Adds the state_id to the episode's history
-            self.visited.append(state_id)
-
             # Adds the selected action to the episode's history
             self.actions.append(action)
+
+        # Adds the state_id to the episode's history
+        self.visited.append(state_id)
 
         return action

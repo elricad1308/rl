@@ -5,7 +5,7 @@ import numpy as np
 LUNAR_LANDING_ACTIONS = 4
 """Number of actions available on the Lunar Landing environment."""
 
-PRECISION = 2
+PRECISION = 1
 """Desired precision for the states to preserve (decimal places)."""
 
 VERSION_NUMBER = 1.0
@@ -255,11 +255,23 @@ class Algorithm(object):
 
     def policy_iteration(self, final_reward):
         """Evaluate and update the current policy."""
+        # Increase the episode count
+        self.episode += 1
+
         # Stores the final reward on the history
         self.rewards.append(final_reward)
 
-        # Increase the episode count
-        self.episode += 1
+        # If in test mode, there's nothing to do
+        if self.test_mode:
+            # Computes total reward for the episode
+            for r in self.rewards:
+                self.total_reward += r
+
+            # Positive total reward means a successful episode
+            if self.total_reward > 0:
+                self.success += 1
+
+            return
 
         # Variable that stores the return
         G = 0
@@ -465,6 +477,9 @@ class Algorithm(object):
         # If 'state' has been never seen before, then 'registers' it on
         # the 'states' dictionary, and assigns it a numeric ID.
         if state not in self.states:
+            # Assign the next available State ID
+            state_id = len(self.states)
+
             # Selects a random action as the greedy action for the
             # new state
             action = random.randrange(0, LUNAR_LANDING_ACTIONS)
@@ -473,9 +488,6 @@ class Algorithm(object):
             self.unseen += 1
 
             if not self.test_mode:
-                # Assign the next available State ID
-                state_id = len(self.states)
-
                 # Registers the new state on the dict
                 self.states[state] = state_id
 
@@ -503,13 +515,13 @@ class Algorithm(object):
 
         # Registers only occur if not in test mode
         if not self.test_mode:
-            # Adds the state_id to the episode's history
-            self.visited.append(state_id)
-
             # Adds the selected action to the episode's history
             self.actions.append(action)
 
             # Increase the number of times pair state-action is selected
             self.n[state_id][action] += 1
+
+        # Adds the state_id to the episode's history
+        self.visited.append(state_id)
 
         return action
