@@ -5,7 +5,7 @@ import numpy as np
 LUNAR_LANDING_ACTIONS = 4
 
 
-class OnPolicyMonteCarlo(object):
+class Algorithm(object):
     """Implement an On-Policy Monte Carlo agent for Lunar Landing.
 
     Attributes:
@@ -36,7 +36,7 @@ class OnPolicyMonteCarlo(object):
 
     """
 
-    def __init__(self, epsilon, gamma):
+    def __init__(self, epsilon, gamma, test=False):
         """Create a new agent.
 
         Args:
@@ -148,7 +148,7 @@ class OnPolicyMonteCarlo(object):
 
         self.reset()
 
-    def policy_evaluation(self):
+    def policy_iteration(self):
         """Evaluate and update the current policy."""
         G = 0
 
