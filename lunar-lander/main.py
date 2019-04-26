@@ -11,8 +11,8 @@ import getopt
 # sys.path.append("/lustre/users/josea/.local/lib/python3.6/site-packages")
 
 import gym
-# import onpmc # On-policy Monte Carlo
-import offpmc  # Off-policy Monte Carlo
+import onpmc as rl # On-policy Monte Carlo
+# import offpmc as rl # Off-policy Monte Carlo
 
 
 def episode():
@@ -58,10 +58,10 @@ def episode():
             action = algo.step(obs, reward)
 
     # Proceeds to improve the policy
-    final_return = algo.policy_iteration(reward)
+    algo.policy_iteration(reward)
 
     # Prints information about the episode
-    algo.debug(final_return)
+    algo.debug()
 
 
 def print_usage(small=True):
@@ -167,8 +167,7 @@ if __name__ == "__main__":
     env = gym.make('LunarLander-v2')
 
     # Create an instance of the algorithm
-    # algo = onpmc.Algorithm(epsilon, gamma, test)
-    algo = offpmc.Algorithm(epsilon, gamma, test)
+    algo = rl.Algorithm(epsilon, gamma, test)
 
     # If told so, load a saved agent
     if input:

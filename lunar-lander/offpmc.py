@@ -63,6 +63,9 @@ class Algorithm(object):
           policy as fast as possible, without the additional burden of
           all the steps required for policy iteration.
 
+      - total_reward (float): the total reward obtainer by the agent
+          during the current episode.
+
       - unseen (int): list of previously unknown states visited on the
           current episode.
 
@@ -81,7 +84,7 @@ class Algorithm(object):
           - gamma (float): the value to use as the discount rate for
               the return formula.
 
-          - [sim] (bool): a flag that indicates if the agent runs in
+          - [test] (bool): a flag that indicates if the agent runs in
               simulation mode or not.
 
         """
@@ -188,7 +191,7 @@ class Algorithm(object):
 
         return ' '.join(state)
 
-    def debug(self, ret=0.0):
+    def debug(self):
         """Print debug information about the state of the agent."""
         episode_size = len(self.visited)
 
@@ -197,7 +200,7 @@ class Algorithm(object):
 
         print(
           f"Episode: {self.episode}\t"
-          f"Return: {ret:.2f}\t"
+          f"Total reward: {self.total_reward}\t"
           f"Success: {self.success}\t"
           f"Ep. size: {episode_size}\t"
           f"({perc_seen:.2f}% seen / {perc_unseen:.2f}% unseen)\t"
@@ -276,7 +279,10 @@ class Algorithm(object):
             action = self.actions[t]
             reward = self.rewards[t + 1]
 
-            # Discounts the reward
+            # Adds the reward to total
+            self.total_reward += reward
+
+            # Discounts the return
             G = (self.gamma * G) + reward
 
             # Updates the weight
@@ -299,6 +305,8 @@ class Algorithm(object):
             # Updates the target policy with the greedy action
             self.policy[state] = greedy_action
 
+            print(f"A_t = {action} , Greedy = {greedy_action}")
+
             # If greedy action was not selected, proceed to next episode
             if action != greedy_action:
                 break
@@ -306,7 +314,9 @@ class Algorithm(object):
             # Updates the weight
             W = W * (1.0 / (1.0 - self.epsilon + (self.epsilon / LUNAR_LANDING_ACTIONS)))
 
-        return G
+        # A positive total reward means a successful landing
+        if self.total_reward > 0:
+            self.success += 1
 
     def reset(self):
         """Prepare the agent for a new episode.
@@ -324,6 +334,9 @@ class Algorithm(object):
 
         # Number of previously known states
         self.seen = 0
+
+        # Total reward for current episode
+        self.total_reward = 0
 
         # Number of unknown states
         self.unseen = 0

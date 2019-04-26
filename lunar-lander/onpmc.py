@@ -3,6 +3,13 @@ import random
 import numpy as np
 
 LUNAR_LANDING_ACTIONS = 4
+"""Number of actions available on the Lunar Landing environment."""
+
+PRECISION = 2
+"""Desired precision for the states to preserve (decimal places)."""
+
+VERSION_NUMBER = 1.0
+"""Current version of the algorithm."""
 
 
 class Algorithm(object):
@@ -11,6 +18,8 @@ class Algorithm(object):
     Attributes:
       - actions (list): a list that contains the actions selected on
           the current episode.
+
+      - episode (int): the number of performed episodes.
 
       - epsilon (float): a small value in [0, 1) used for the epsilon
           greedy policy selection.
@@ -26,10 +35,33 @@ class Algorithm(object):
           as keys the IDs of all known states, and as values a numpy
           array of 4 elements, which contains the values of each action
           for that state.
+
+      - rewards (list): a list that contains the sequence of all
+          rewards received on the current episode.
+
+      - seen (int): number of previously known states visited on the
+          current episode.
+
       - states (dict): the dictionary containing ALL known states. It
           maps from states as received from the observation (in the
           case of Lunar Landing, an 8-element array) to a natural int
           used as the State ID.
+
+      - success (int): the number of successful episodes (episodes with
+          positive total return)
+
+      - test_mode (bool): a flag that indicates if the agent runs in
+          test mode or not. In test mode, no new states are registered,
+          and no policy iteration is done at the end of each episode.
+          Test mode is designed to run the simulation using the target
+          policy as fast as possible, without the additional burden of
+          all the steps required for policy iteration.
+
+      - total_reward (float): the total reward obtainer by the agent
+          during the current episode.
+
+      - unseen (int): list of previously unknown states visited on the
+          current episode.
 
       - visited (list): a list that contains the IDs of the visited
           states on the current episode.
@@ -46,9 +78,12 @@ class Algorithm(object):
           - gamma (float): the value to use as the discount rate for
               the return.
 
+          - [test] (bool): a flag that indicates if the agent runs in
+              simulation mode or not.
+
         """
         # Episode count for the agent
-        self.episode = 0
+        self.episode = 1
 
         # Epsilon attribute for the epsilon-greedy policy.
         self.epsilon = epsilon
@@ -77,24 +112,27 @@ class Algorithm(object):
         # Cantidad de episodios 'exitosos' (con retorno positivo)
         self.success = 0
 
+        # Flag for the test mode
+        self.test_mode = test
+
         # Prepares the agent for a new episode.
         self.reset()
 
     def create_state(self, obs):
-        """Transform an observation to a state.
+        """Transform an observation into a state.
 
-        The Lunar Landing provides at each time step an 8 element numpy
-        array, containing information such as the X and Y coordinates
-        of the pad (which are continuous instead of discrete), the
-        speed, angle and angular speed of the pad, and flags that
-        indicate whether the pad has made contact with the moon or not.
+        The Lunar Landing environment provides at each time step an 8
+        element numpy array, containing information such as the X and
+        Y coordinates of the pad (which are continuous, and are scaled
+        to the viewport), the speed, angle and angular speed of the
+        pad, and flags that indicate whether the pad has made contact
+        with the floor or not.
 
         Due to all values being real, the amount of possible states is
         overwhelming, and thus, in order to maintain efficiency, the
-        values from the observation array are truncated to just one
-        decimal position, and then join together as a single string,
-        which is the representation that the agent uses to identify
-        states.
+        values from the observation array are transformed following a
+        series of rules based on the 'heuristic' present on the Lunar
+        Landing example.
 
         Args:
           - obs (numpy.array) the observation array, as sent from the
@@ -105,88 +143,164 @@ class Algorithm(object):
             the values and joining them together.
 
         """
-        # To reduce the number of states, values from the observation
-        # are truncated to just 1 decimal. Two last items of the
-        # observation indicate if legs had made contact, and are
-        # considered meaningless for this agent
-        state = []
+        # Pad angle should point to center. To compute it, we use the
+        # horizontal coordinate (obs[0]) and the horizontal speed
+        # (obs[2])
+        target_angle = obs[0] * 0.5 + obs[2] * 1.0
 
-        for i, element in enumerate(obs):
-            if i < 6:
-                n = int(round(element, 1) * 10)
-                state.append(str(n))
-        # t = tuple(f"{x:.1f}" for x in obs)
+        # Any value higher than 0.4 radians is equally bad, and thus
+        # are all the same
+        if target_angle > 0.4:
+            target_angle = 0.4
+        if target_angle < -0.4:
+            target_angle = -0.4
 
-        # return ' '.join(t)
-        return '.'.join(state)
+        # To compute the fix to perform on the angle, we use the target
+        # angle, the current angle (obs[4]) and the angle speed
+        # (obs[5])
+        todo_angle = (target_angle - obs[4]) * 0.5 - (obs[5]) * 1.0
 
-    def debug(self, ret):
-        """Print debug information."""
-        e = self.episode
-        r = ret
-        num_states = len(self.states)
-        size_episode = len(self.visited)
+        # The target y should be proportional to the horizontal offset
+        target_hover = 0.55 * np.abs(obs[0])
 
-        perc_seen = (self.seen / size_episode) * 100
-        perc_unseen = (self.unseen / size_episode) * 100
+        # To compute the fix to perform on the hover, we use the target
+        # hover, the vertical coordinate (obs[1]) and the vertical
+        # speed (obs[3])
+        todo_hover = (target_hover - obs[1]) * 0.5 - (obs[3]) * 0.5
+
+        # If any leg has made contact, we should NOT modify the angle,
+        # because it will cause the pad to lose stability. We should
+        # only focus on reduce vertical speed, to make the landing as
+        # smooth as possible. Leg contact is indicated by either obs[6]
+        # (left lef) or obs[7] (right leg).
+        if obs[6] or obs[7]:
+            todo_angle = 0
+            todo_hover = -(obs[3]) * 0.5
+
+        # All the information we need is thus the targets angle and
+        # hover, and the todo angle and hover. This values are stored
+        # on a list and joined together on a string to create the hash
+        state = [
+          str(round(target_angle, PRECISION)),
+          str(round(target_hover, PRECISION)),
+          str(round(todo_angle, PRECISION)),
+          str(round(todo_hover, PRECISION))
+        ]
+
+        return ' '.join(state)
+
+    def debug(self):
+        """Print debug information about the state of the agent."""
+        episode_size = len(self.visited)
+
+        perc_seen = (self.seen / episode_size) * 100
+        perc_unseen = (self.unseen / episode_size) * 100
 
         print(
-          f"Episode: {e}\t"
-          f"Reward: {r:.2f}\t"
+          f"Episode: {self.episode}\t"
+          f"Total reward: {self.total_reward:.2f}\t"
           f"Success: {self.success}\t"
-          f"Ep. size: {size_episode} "
+          f"Ep. size: {episode_size}\t"
           f"({perc_seen:.2f}% seen / {perc_unseen:.2f}% unseen)\t"
-          f"States: {num_states}"
+          f"States: {len(self.states)}"
         )
 
     def load(self, filename):
+        """Load a saved agent.
+
+        Agents can be saved to preserve their state, and the loaded
+        again using this method. The given 'filename' should contains
+        a valid agent, which is represented as a pickled list.
+
+        The first element of the agent's list is the version number:
+        if this value differs from the current version, then the agent
+        cannot be loaded.
+
+        If the saved agent's version is compatible with the current
+        version, then all the data structures stored on the 'filename'
+        are used to restore the agent.
+
+        Args:
+          - filename (string): the file that contains the agent.
+
+        """
         data = pickle.load(open(filename, "rb"))
 
-        self.policy = data[0]
-        self.q = data[1]
-        self.states = data[2]
+        data_version = data[0]
 
-        self.reset()
+        if data_version == VERSION_NUMBER:
+            # Episode number and number of success
+            self.episode = data[1]
+            self.success = data[2]
 
-    def policy_iteration(self):
+            # Target policy
+            self.policy = data[3]
+
+            # Action-value estimate Q
+            self.q = data[4]
+
+            # Cumulative weight sum C
+            self.n = data[5]
+
+            # Dict with the known states
+            self.states = data[6]
+
+            # Prepare the agent for a new episode
+            self.reset()
+        else:
+            print(
+              f"ERROR: Data version is {data_version}, and therefore "
+              f"cannot be loaded (current version: {VERSION_NUMBER})"
+            )
+
+    def policy_iteration(self, final_reward):
         """Evaluate and update the current policy."""
-        G = 0
+        # Stores the final reward on the history
+        self.rewards.append(final_reward)
 
-        # Iterates for each time step
-        for t, state in enumerate(self.visited):
-            # Last state does not have a reward
-            if t < len(self.visited) - 1:
-                # Update the return for time t
-                G = (self.gamma * G) + self.rewards[t + 1]
-
-                s_t = state
-                a_t = self.actions[t]
-                q_n = self.q[s_t][a_t]
-                n = self.n[s_t][a_t]
-
-                # Updates the q(s, a) estimate
-                self.q[s_t][a_t] = q_n + (1.0 / n) * (G - q_n)
-
-                # Finds the action with max q(s, a)
-                max_a = 0
-                max_q = self.q[s_t][0]
-
-                for a in range(LUNAR_LANDING_ACTIONS):
-                    if(self.q[s_t][a] > max_q):
-                        max_q = self.q[s_t][a]
-                        max_a = a
-
-                # Updates the probabilities under the current policy
-                for a in range(LUNAR_LANDING_ACTIONS):
-                    x = self.epsilon / LUNAR_LANDING_ACTIONS
-                    if a == max_a:
-                        self.policy[s_t][a] = 1.0 - self.epsilon + x
-                    else:
-                        self.policy[s_t][a] = x
-
+        # Increase the episode count
         self.episode += 1
 
-        return G
+        # Variable that stores the return
+        G = 0
+
+        # Maximum time step for this episode
+        T = len(self.rewards)
+
+        # Loops the history in reverse order (there is always
+        # one extra reward, for that reason we start the
+        # computation on T - 2)
+        for t in range(T - 2, -1, -1):
+            state = self.visited[t]
+            action = self.actions[t]
+            reward = self.rewards[t + 1]
+            n = self.n[state][action]
+
+            # Update the total reward
+            self.total_reward += reward
+
+            # Update the return for time t
+            G = (self.gamma * G) + reward
+
+            # Updates the q(s, a) estimate
+            estimate = self.q[state][action]
+            self.q[state][action] = estimate + (1.0 / n) * (G - estimate)
+
+            # Finds the action with max q(s, a)
+            max_a = 0
+            max_q = self.q[state][0]
+
+            for a in range(LUNAR_LANDING_ACTIONS):
+                if(self.q[state][a] > max_q):
+                    max_q = self.q[state][a]
+                    max_a = a
+
+            # Updates the current policy
+            self.policy[state] = max_a
+
+        # A positive total reward means a successful episode
+        if self.total_reward > 0:
+            self.success += 1
 
     def reset(self):
         """Prepare the agent for a new episode.
@@ -204,6 +318,9 @@ class Algorithm(object):
         # Number of previously seen states in current episode
         self.seen = 0
 
+        # Total reward for current episode
+        self.total_reward = 0
+
         # Number of new episodes created in current episode
         self.unseen = 0
 
@@ -213,33 +330,41 @@ class Algorithm(object):
     def save(self, filename):
         """Save the current state of the agent.
 
-        The info saved includes the policy, the action-value estimate
-        (q) and the list of known states.
+        The info saved includes the target policy, the action value
+        estimate q, the number of visits to each state-action n, the
+        list of known states, the current episode number and the number
+        of successful episodes.
 
-        The actions, rewards and visited states are not saved, since
-        they are only relevant for the current episode. The number
-        of episodes, value of epsilon, gamma and number of times each
-        action is selected neither are saved, since they are not
-        necesary for future iterations.
+        The number of seen and unseen episodes, actions, rewards and
+        visited states are not saved, since they are only relevant for
+        the current episode. The values of epsilon, gamma and test mode
+        neither are saved, since they are not necessary for future
+        iterations.
 
-        A list is created with the policy, the q estimate and the
-        states (in that order), and then the list is pickled on the
-        file with the given 'filename'.
+        A list is created with the algorithm version number, episode
+        number, amount of successful episodes, policy, action-value
+        estimate q, number of visits n and the states (in that order),
+        and then the list is pickled on the file with the given
+        'filename'.
 
         Args:
           filename (string): the name of the destiny file.
 
         """
         data = [
+          VERSION_NUMBER,
+          self.episode,
+          self.success,
           self.policy,
           self.q,
+          self.n,
           self.states
         ]
 
         pickle.dump(data, open(filename, "wb"))
 
     def select_action(self, state_id):
-        """Apply an epsilon-soft policy to select an action.
+        """Apply an epsilon-greedy policy to select an action.
 
         With probability 1 - epsilon, the greedy action for the given
         state_id is selected (based on the value of the estimates).
@@ -268,13 +393,7 @@ class Algorithm(object):
 
         # With probability epsilon, a random action is chosed
         else:
-            coin_toss = random.random()
-            sum = self.policy[state_id][0]
-            action = 0
-
-            while sum < coin_toss:
-                action += 1
-                sum += self.policy[state_id][action]
+            action = random.randrange(0, LUNAR_LANDING_ACTIONS)
 
         return action
 
@@ -300,7 +419,7 @@ class Algorithm(object):
         state = self.create_state(obs)
 
         # action = self.visit_state(state)
-        action = self.sim_visit_state(state)
+        action = self.visit_state(state)
 
         # A reward of None indicates that this is the first time step.
         if reward is not None:
@@ -346,25 +465,31 @@ class Algorithm(object):
         # If 'state' has been never seen before, then 'registers' it on
         # the 'states' dictionary, and assigns it a numeric ID.
         if state not in self.states:
-            state_id = len(self.states)
-            self.states[state] = state_id
-
-            # A never-seen-before state obviously does not containg
-            # an action on the policy, and thus an equiprobable policy
-            # is created for it
-            self.policy[state_id] = np.full(LUNAR_LANDING_ACTIONS, 1.0 / LUNAR_LANDING_ACTIONS)
+            # Selects a random action as the greedy action for the
+            # new state
             action = random.randrange(0, LUNAR_LANDING_ACTIONS)
-
-            # And also it does not have an estimate of the action-state
-            # function nor the returns for any of the actions.
-            self.q[state_id] = np.zeros(LUNAR_LANDING_ACTIONS)
-
-            # We also create the array to store the amount of times the
-            # state and each action are selected
-            self.n[state_id] = np.zeros(LUNAR_LANDING_ACTIONS)
 
             # Registers the state as unseen
             self.unseen += 1
+
+            if not self.test_mode:
+                # Assign the next available State ID
+                state_id = len(self.states)
+
+                # Registers the new state on the dict
+                self.states[state] = state_id
+
+                # Stores the random action as the greedy action on the
+                # target policy
+                self.policy[state_id] = action
+
+                # Create the array for the state on the q action value
+                # estimate
+                self.q[state_id] = np.zeros(LUNAR_LANDING_ACTIONS)
+
+                # We also create the array to store the amount of times the
+                # state and each action are selected
+                self.n[state_id] = np.zeros(LUNAR_LANDING_ACTIONS)
         # Otherwise, recovers the state_id for that state, and gets a
         # epsilon-greedy action for it
         else:
@@ -373,98 +498,18 @@ class Algorithm(object):
             # Selects an action according to policy
             action = self.select_action(state_id)
 
-            # Actions loaded from save files does not have a history
-            if state_id not in self.n:
-                self.n[state_id] = np.zeros(LUNAR_LANDING_ACTIONS)
-
             # Registers the state as seen
             self.seen += 1
 
-        # Adds the state_id to the episode's history
-        self.visited.append(state_id)
+        # Registers only occur if not in test mode
+        if not self.test_mode:
+            # Adds the state_id to the episode's history
+            self.visited.append(state_id)
 
-        # Adds the selected action to the episode's history
-        self.actions.append(action)
+            # Adds the selected action to the episode's history
+            self.actions.append(action)
 
-        # Increase the number of times pair state-action is selected
-        self.n[state_id][action] += 1
-
-        return action
-
-    def sim_policy_evaluation(self):
-        """Evaluate and update the current policy."""
-        G = 0
-
-        # Iterates for each time step
-        for t, state in enumerate(self.visited):
-            # Last state does not have a reward
-            if t < len(self.visited) - 1:
-                G = (self.gamma * G) + self.rewards[t + 1]
-
-        self.episode += 1
-        self.success += 1 if G > 0 else 0
-
-        return G
-
-    def sim_visit_state(self, state):
-        """Register a visit to the given state.
-
-        If the state is not known (that is, if it doesn't exist on the
-        'states' dict), then it is registered, and the next available
-        state ID is assigned to it. Then, the state is also added to
-        the 'policy' dict, with a random action selected as the greedy
-        action for the newly registered state. Finally, a new register
-        is also added to the 'q' dict, with all action-value estimates
-        for the new state set to zero.
-
-        On the other hand, if 'state' is known, then its ID is found on
-        the 'states' dict, and the epsilon-greedy policy is applied:
-        with probability (1 - e) the greedy action stored on the policy
-        for that state is selected, and with probability e a random
-        action is selected from [0, 3] (recall that the Lunar Landing
-        task has four defined actions).
-
-        Wether the state is known or not, it is added to the 'visited'
-        list for this episode, and the selected action is added to the
-        'actions' list.
-
-        For return value, the method returns the action to perform.
-
-        Args:
-          - state (string): the hash value of the visited state.
-
-        Returns:
-          (int): the action selected to perform by the policy of the
-            agent.
-
-        """
-        # If 'state' has been never seen before, then 'registers' it on
-        # the 'states' dictionary, and assigns it a numeric ID.
-        if state not in self.states.keys():
-            state_id = len(self.states)
-
-            action = random.randrange(0, LUNAR_LANDING_ACTIONS)
-
-            self.unseen += 1
-        # Otherwise, recovers the state_id for that state, and gets a
-        # epsilon-greedy action for it
-        else:
-            state_id = self.states[state]
-
-            # Selects an action according to policy
-            action = self.select_action(state_id)
-
-            # Actions loaded from save files does not have a history
-            if state_id not in self.n.keys():
-                self.n[state_id] = np.zeros(LUNAR_LANDING_ACTIONS)
-
-            # Registers the state as seen
-            self.seen += 1
-
-        # Adds the state_id to the episode's history
-        self.visited.append(state_id)
-
-        # Adds the selected action to the episode's history
-        self.actions.append(action)
+            # Increase the number of times pair state-action is selected
+            self.n[state_id][action] += 1
 
         return action
