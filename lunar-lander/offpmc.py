@@ -5,7 +5,7 @@ import numpy as np
 LUNAR_LANDING_ACTIONS = 4
 """Number of actions available on the Lunar Landing environment."""
 
-PRECISION = 2
+PRECISION = 1
 """Desired precision for the states to preserve (decimal places)."""
 
 VERSION_NUMBER = 1.0
