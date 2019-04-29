@@ -14,6 +14,7 @@ import gym
 import onpmc        # On-policy Monte Carlo
 import offpmc       # Off-policy Monte Carlo
 import sarsa
+import q_learning
 
 
 def episode():
@@ -84,7 +85,7 @@ def print_usage(small=True):
         usage = (
           f"main.py | Executes the Lunar Landing environment.\n"
           f"  Arguments:\n"
-          f"\t-m | --method <onpmc | offpmc | sarsa>\n"
+          f"\t-m | --method <onpmc | offpmc | sarsa | qlearning | expected>\n"
           f"\t[-a | --alpha]\t\t: Alpha value for the algorithm."
           f"\t[-e | --epsilon]\t\t: Epsilon value for the algorithm.\n"
           f"\t[-g | --gamma]\t\t: Gamma value for the algorithm.\n"
@@ -191,6 +192,8 @@ if __name__ == "__main__":
         algo = offpmc.Algorithm(epsilon, gamma, test)
     elif method == "sarsa":
         algo = sarsa.Algorithm(alpha, epsilon, gamma, test)
+    elif method == "qlearning":
+        algo = q_learning.Algorithm(alpha, epsilon, gamma, test)
     else:
         print_usage()
         sys.exit(2)

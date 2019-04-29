@@ -13,7 +13,7 @@ VERSION_NUMBER = 1.0
 
 
 class Algorithm(object):
-    """Implement a SARSA agent for Lunar Landing."""
+    """Implement a Q-Learning agent for Lunar Landing."""
 
     def __init__(self, alpha, epsilon, gamma, test):
         """Create a new agent."""
@@ -235,14 +235,22 @@ class Algorithm(object):
         # Select new action for the new state
         action = self.visit_state(state)
 
-        # The update only occurs if not in test mode
+        # Update occurs only if not in test mode
         if not self.test_mode:
             # Updates the estimate for previous action
             p_s = self.states[self.state]
             n_s = self.states[state]
 
+            # Search the action with max estimate
             p_estimate = self.q[p_s][self.action]
-            n_estimate = self.q[n_s][action]
+            n_estimate = -(2 ** 32)
+            for a in range(LUNAR_LANDING_ACTIONS):
+                estimate = self.q[n_s][a]
+
+                if estimate > n_estimate:
+                    n_estimate = estimate
+
+            # Computes the error for the formula
             error = self.alpha * (reward + (self.gamma * n_estimate) - p_estimate)
 
             self.q[p_s][self.action] = p_estimate + error
