@@ -1,5 +1,10 @@
 import sys
 import getopt
+import onpmc        # On-policy Monte Carlo
+import offpmc       # Off-policy Monte Carlo
+import sarsa
+import q_learning
+import expected_sarsa
 
 # Uncomment (or add) the path to gym on your system if it cannot be
 # found by the interpreter!
@@ -11,10 +16,6 @@ sys.path.append("/usr/local/lib/python3.7/site-packages")
 # sys.path.append("/lustre/users/josea/.local/lib/python3.6/site-packages")
 
 import gym
-import onpmc        # On-policy Monte Carlo
-import offpmc       # Off-policy Monte Carlo
-import sarsa
-import q_learning
 
 
 def episode():
@@ -194,6 +195,8 @@ if __name__ == "__main__":
         algo = sarsa.Algorithm(alpha, epsilon, gamma, test)
     elif method == "qlearning":
         algo = q_learning.Algorithm(alpha, epsilon, gamma, test)
+    elif method == "expected":
+        algo = expected_sarsa.Algorithm(alpha, epsilon, gamma, test)
     else:
         print_usage()
         sys.exit(2)
