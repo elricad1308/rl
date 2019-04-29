@@ -190,25 +190,25 @@ class Algorithm(object):
                 if estimate > max_estimate:
                     greedy_action = a
                     max_estimate = estimate
-                # elif estimate == max_estimate:
-                #    if self.state[0] <= env.GOAL_X + 1:
-                #        greedy_action = env.ACTION_EAST
-                #    elif self.state[1] <= (env.GOAL_Y) and self.state[2] == 0:
-                #        greedy_action = env.ACTION_SOUTH
-                #    elif self.state[0] > env.GOAL_X:
-                #        greedy_action = env.ACTION_WEST
+                elif estimate == max_estimate:
+                    if self.state[0] <= env.GOAL_X + 1:
+                        greedy_action = env.ACTION_EAST
+                    elif self.state[1] <= (env.GOAL_Y) and self.state[2] == 0:
+                        greedy_action = env.ACTION_SOUTH
+                    elif self.state[0] > env.GOAL_X:
+                        greedy_action = env.ACTION_WEST
                 # If the estimate is equal, is replaced if it will
                 # make the target closest to the goal
-                elif estimate == max_estimate:
-                    nxt_a = self.compute_position(a)
-                    nxt_g = self.compute_position(greedy_action)
-                    g_x = env.GOAL_X
-                    g_y = env.GOAL_Y
+                # elif estimate == max_estimate:
+                #    nxt_a = self.compute_position(a)
+                #    nxt_g = self.compute_position(greedy_action)
+                #    g_x = env.GOAL_X
+                #    g_y = env.GOAL_Y
 
-                    dist_a = abs(nxt_a[0] - g_x) + abs(nxt_a[1] - g_y)
-                    dist_g = abs(nxt_g[0] - g_x) + abs(nxt_g[1] - g_y)
+                #    dist_a = abs(nxt_a[0] - g_x) + abs(nxt_a[1] - g_y)
+                #    dist_g = abs(nxt_g[0] - g_x) + abs(nxt_g[1] - g_y)
 
-                    greedy_action = a if dist_a < dist_g else greedy_action
+                #    greedy_action = a if dist_a < dist_g else greedy_action
 
             action = greedy_action
         # With probability epsilon, a random action is selected
