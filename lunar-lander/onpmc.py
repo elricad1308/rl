@@ -115,9 +115,6 @@ class Algorithm(object):
         # Flag for the test mode
         self.test_mode = test
 
-        # Prepares the agent for a new episode.
-        self.reset()
-
     def create_state(self, obs):
         """Transform an observation into a state.
 
@@ -244,9 +241,6 @@ class Algorithm(object):
 
             # Dict with the known states
             self.states = data[6]
-
-            # Prepare the agent for a new episode
-            self.reset()
         else:
             print(
               f"ERROR: Data version is {data_version}, and therefore "
@@ -314,7 +308,7 @@ class Algorithm(object):
         if self.total_reward > 0:
             self.success += 1
 
-    def reset(self):
+    def reset(self, obs):
         """Prepare the agent for a new episode.
 
         This method re-creates all the data structures that change with
@@ -338,6 +332,13 @@ class Algorithm(object):
 
         # List containing states VISITED in current episode
         self.visited = list()
+
+        # Create state from initial observation
+        state = self.create_state(obs)
+        action = self.visit_state(state)
+        self.rewards.append(0)
+
+        return action
 
     def save(self, filename):
         """Save the current state of the agent.
@@ -409,7 +410,7 @@ class Algorithm(object):
 
         return action
 
-    def step(self, obs, reward=None):
+    def step(self, obs, reward):
         """Perform an entire time step of the agent.
 
         First, the observation sent from the environment is 'hashed'
@@ -433,12 +434,8 @@ class Algorithm(object):
         # action = self.visit_state(state)
         action = self.visit_state(state)
 
-        # A reward of None indicates that this is the first time step.
-        if reward is not None:
-            self.rewards.append(reward)
-        # First time step has a reward of zero
-        else:
-            self.rewards.append(0)
+        # Store the reward
+        self.rewards.append(reward)
 
         return action
 

@@ -186,6 +186,9 @@ if __name__ == "__main__":
         algo = q_learning.Algorithm(alpha, epsilon, gamma, king, stochastic)
     elif method == "expected":
         algo = expected_sarsa.Algorithm(alpha, epsilon, gamma, king, stochastic)
+    else:
+        print_usage()
+        sys.exit(2)
 
     # Loads the environment
     env = environment.Environment(king, stochastic)

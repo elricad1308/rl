@@ -5,14 +5,15 @@ import getopt
 # found by the interpreter!
 
 # Path to gym on Fedora Linux
-# sys.path.append("/usr/local/lib/python3.7/site-packages")
+sys.path.append("/usr/local/lib/python3.7/site-packages")
 
 # Path to gym on the cluster
 # sys.path.append("/lustre/users/josea/.local/lib/python3.6/site-packages")
 
 import gym
-# import onpmc as rl # On-policy Monte Carlo
-import offpmc as rl # Off-policy Monte Carlo
+import onpmc        # On-policy Monte Carlo
+import offpmc       # Off-policy Monte Carlo
+import sarsa
 
 
 def episode():
@@ -35,10 +36,9 @@ def episode():
     """
     # Resets the environtment
     obs = env.reset()
-    algo.reset()
 
-    # Choose initial action
-    action = algo.step(obs)
+    # Choose action from initial observation
+    action = algo.reset(obs)
 
     # This flag determines the end of the episode
     done = False
@@ -69,6 +69,8 @@ def print_usage(small=True):
     if small:
         usage = (
           f"USAGE: main.py "
+          f"-m|--method <onpmc | offpmc | sarsa>"
+          f"[-a|--alpha <alpha>] "
           f"[-e|--epsilon <epsilon>] "
           f"[-g|--gamma <gamma>] "
           f"[-i|--input <inputfile>] "
@@ -82,6 +84,8 @@ def print_usage(small=True):
         usage = (
           f"main.py | Executes the Lunar Landing environment.\n"
           f"  Arguments:\n"
+          f"\t-m | --method <onpmc | offpmc | sarsa>\n"
+          f"\t[-a | --alpha]\t\t: Alpha value for the algorithm."
           f"\t[-e | --epsilon]\t\t: Epsilon value for the algorithm.\n"
           f"\t[-g | --gamma]\t\t: Gamma value for the algorithm.\n"
           f"\t[-i | --input <inputfile>]\t: Load agent from <inputfile>.\n"
@@ -97,26 +101,40 @@ def print_usage(small=True):
 
 if __name__ == "__main__":
     long_options = [
-      "help",
+      "alpha=",
+      "cycles=",
       "epsilon=",
       "gamma=",
+      "help",
       "input=",
+      "method="
       "output=",
-      "cycles=",
       "render",
       "test"
     ]
 
+    options = "a:c:e:g:hi:m:o:rt"
+
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "he:g:i:o:c:rt", long_options)
+        opts, args = getopt.getopt(sys.argv[1:], options, long_options)
     except getopt.GetoptError:
         print_usage()
         sys.exit(2)
 
-    # Epsilon, gamma and episode values
+    # Alpha, epsilon, gamma and cycle values
+    alpha = 0.5
     epsilon = 0.05
     gamma = 0.9
-    episodes = 1000
+    cycles = 1000
+
+    # Flag to load an agent
+    input = ""
+
+    # Method to use
+    method = "onpmc"
+
+    # Flag to save the agent
+    output = ""
 
     # Flag to render the simulation
     render = False
@@ -124,17 +142,14 @@ if __name__ == "__main__":
     # Flag to run simulation on test mode
     test = False
 
-    # Flag to load an agent
-    input = ""
-
-    # Flag to save the agent
-    output = ""
-
     for opt, arg in opts:
-        # Option to print help
-        if opt in ("-h", "--help"):
-            print_usage(False)
-            sys.exit()
+        # Option to specify alpha
+        if opt in ("-a", "--alpha"):
+            alpha = float(arg)
+
+        # Option to specify number of cycles
+        elif opt in ("-c", "--cycles"):
+            cycles = int(arg)
 
         # Option to specify epsilon
         elif opt in ("-e", "--epsilon"):
@@ -144,16 +159,22 @@ if __name__ == "__main__":
         elif opt in ("-g", "--gamma"):
             gamma = float(arg)
 
+        # Option to print help
+        if opt in ("-h", "--help"):
+            print_usage(False)
+            sys.exit()
+
         # Option to load an agent
         elif opt in ("-i", "--input"):
             input = arg
 
+        # Option to specify the agent
+        elif opt in ("-m", "--method"):
+            method = arg
+
         # Option to save the agent
         elif opt in ("-o", "--output"):
             output = arg
-
-        elif opt in ("-c", "--cycles"):
-            episodes = int(arg)
 
         # Option to render the simulation
         elif opt in ("-r", "--render"):
@@ -163,18 +184,26 @@ if __name__ == "__main__":
         elif opt in ("-t", "--test"):
             test = True
 
+    # Create the agent to use
+    if method == "onpmc":
+        algo = onpmc.Algorithm(epsilon, gamma, test)
+    elif method == "offpmc":
+        algo = offpmc.Algorithm(epsilon, gamma, test)
+    elif method == "sarsa":
+        algo = sarsa.Algorithm(alpha, epsilon, gamma, test)
+    else:
+        print_usage()
+        sys.exit(2)
+
     # Loads the environment
     env = gym.make('LunarLander-v2')
-
-    # Create an instance of the algorithm
-    algo = rl.Algorithm(epsilon, gamma, test)
 
     # If told so, load a saved agent
     if input:
         algo.load(input)
 
     # Run the simulation for the given number of episodes
-    for _ in range(episodes):
+    for _ in range(cycles):
         episode()
 
     # If told so, save the agent
