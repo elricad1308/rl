@@ -4,7 +4,8 @@ import environment
 
 import sarsa
 import q_learning
-import expected_sarsa
+import expected_sarsa as expected
+
 
 def episode():
     """Perform a complete episode.
@@ -17,9 +18,6 @@ def episode():
     and then the episode loop starts: at each time step the environment
     is rendered (if desired), the observation and rewards are obtained
     from the environment and send to the algorithm to process them.
-
-    When the environment states that the episode is over, then the
-    algorithm proceeds to apply the policy iteration.
 
     Finally, information about the state of the agent is printed.
 
@@ -48,8 +46,15 @@ def episode():
     if not render:
         algo.debug()
 
+
 def print_usage(small=True):
-    """Print help about the usage of the module."""
+    """Print help about the usage of the module.
+
+    Args:
+      - [small] (bool): a flag that indicates if the short version of
+          the usage should be printed. Defaults to True.
+
+    """
     if small:
         usage = (
           f"USAGE: main.py "
@@ -71,18 +76,19 @@ def print_usage(small=True):
           f"  Arguments:\n"
           f"\t-m|--method <sarsa | qlearning | expected>\n"
           f"\t[-a | --alpha]\t\t: Alpha value for the algorithm.\n"
+          f"\t[-c | --cycles <cycles>]\t\t: Number of episodes to run.\n"
           f"\t[-e | --epsilon]\t\t: Epsilon value for the algorithm.\n"
           f"\t[-g | --gamma]\t\t: Gamma value for the algorithm.\n"
-          f"\t[-i | --input <inputfile>]\t: Load agent from <inputfile>.\n"
-          f"\t[-o | --output <outputfile>]\t: Save agent to <outputfile>.\n"
-          f"\t[-c | --cycles <cycles>]\t\t: Number of episodes to run the simulation.\n"
           f"\t[-h | --help]\t\t: Prints this message.\n"
-          f"\t[-r | --render]\t\t: Render the animation during execution.\n"
+          f"\t[-i | --input <inputfile>]\t: Load agent from <inputfile>.\n"
           f"\t[-k | --king]\t\t: Allow the agent to use full king's moves.\n"
-          f"\t[-s | --stochastic]\t: Run the simulation with stochastic wind.\n"
+          f"\t[-o | --output <outputfile>]\t: Save agent to <outputfile>.\n"
+          f"\t[-r | --render]\t\t: Render the animation during execution.\n"
+          f"\t[-s | --stochastic]\t: Run the stochastic wind simulation.\n"
         )
 
     print(usage)
+
 
 if __name__ == "__main__":
     long_options = [
@@ -96,11 +102,10 @@ if __name__ == "__main__":
       "method=",
       "output=",
       "render",
-      "stochastic",
-      "test"
+      "stochastic"
     ]
 
-    options = "a:c:e:g:hi:km:o:rst"
+    options = "a:c:e:g:hi:km:o:rs"
 
     try:
         opts, args = getopt.getopt(sys.argv[1:], options, long_options)
@@ -185,7 +190,7 @@ if __name__ == "__main__":
     elif method == "qlearning":
         algo = q_learning.Algorithm(alpha, epsilon, gamma, king, stochastic)
     elif method == "expected":
-        algo = expected_sarsa.Algorithm(alpha, epsilon, gamma, king, stochastic)
+        algo = expected.Algorithm(alpha, epsilon, gamma, king, stochastic)
     else:
         print_usage()
         sys.exit(2)
