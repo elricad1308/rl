@@ -2,9 +2,9 @@ import sys
 import getopt
 import environment
 
-import sarsa as rl
-#import q_learning as rl
-#import expected_sarsa as rl
+import sarsa
+import q_learning
+import expected_sarsa
 
 def episode():
     """Perform a complete episode.
@@ -53,6 +53,8 @@ def print_usage(small=True):
     if small:
         usage = (
           f"USAGE: main.py "
+          f"-m <sarsa | qlearning | expected> "
+          f"[-a|--alpha <alpha>] "
           f"[-e|--epsilon <epsilon>] "
           f"[-g|--gamma <gamma>] "
           f"[-i|--input <inputfile>] "
@@ -67,6 +69,8 @@ def print_usage(small=True):
         usage = (
           f"main.py | Executes the Lunar Landing environment.\n"
           f"  Arguments:\n"
+          f"\t-m|--method <sarsa | qlearning | expected>\n"
+          f"\t[-a | --alpha]\t\t: Alpha value for the algorithm.\n"
           f"\t[-e | --epsilon]\t\t: Epsilon value for the algorithm.\n"
           f"\t[-g | --gamma]\t\t: Gamma value for the algorithm.\n"
           f"\t[-i | --input <inputfile>]\t: Load agent from <inputfile>.\n"
@@ -89,13 +93,14 @@ if __name__ == "__main__":
       "help",
       "input=",
       "king",
+      "method=",
       "output=",
       "render",
       "stochastic",
       "test"
     ]
 
-    options = "a:c:e:g:hi:ko:rst"
+    options = "a:c:e:g:hi:km:o:rst"
 
     try:
         opts, args = getopt.getopt(sys.argv[1:], options, long_options)
@@ -114,6 +119,9 @@ if __name__ == "__main__":
 
     # Flag for king's moves
     king = False
+
+    # Method used for solving
+    method = "sarsa"
 
     # Agent's output file
     output = ""
@@ -155,6 +163,10 @@ if __name__ == "__main__":
         elif opt in ("-k", "--king"):
             king = True
 
+        # Option to set the method
+        elif opt in ("-m", "--method"):
+            method = arg
+
         # Option to save the agent
         elif opt in ("-o", "--output"):
             output = arg
@@ -167,11 +179,16 @@ if __name__ == "__main__":
         elif opt in ("-s", "--stochastic"):
             stochastic = True
 
+    # Create an instance of the algorithm
+    if method == "sarsa":
+        algo = sarsa.Algorithm(alpha, epsilon, gamma, king, stochastic)
+    elif method == "qlearning":
+        algo = q_learning.Algorithm(alpha, epsilon, gamma, king, stochastic)
+    elif method == "expected":
+        algo = expected_sarsa.Algorithm(alpha, epsilon, gamma, king, stochastic)
+
     # Loads the environment
     env = environment.Environment(king, stochastic)
-
-    # Create an instance of the algorithm
-    algo = rl.Algorithm(alpha, epsilon, gamma, king, stochastic)
 
     # If told so, load a saved agent
     if input:
