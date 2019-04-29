@@ -1,6 +1,10 @@
 .DS_Store
 *.pyo
 *.pyc
-/lunar-lander/*.bin
 /__pycache__
+
+/lunar-lander/*.bin
 /lunar-lander/__pycache__/**/*
+
+/windy-gridworld/*.bin
+/windy-gridworld/__pycache__/**/*

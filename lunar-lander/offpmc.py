@@ -200,7 +200,7 @@ class Algorithm(object):
 
         print(
           f"Episode: {self.episode}\t"
-          f"Total reward: {self.total_reward}\t"
+          f"Total reward: {self.total_reward:.2f}\t"
           f"Success: {self.success}\t"
           f"Ep. size: {episode_size}\t"
           f"({perc_seen:.2f}% seen / {perc_unseen:.2f}% unseen)\t"
