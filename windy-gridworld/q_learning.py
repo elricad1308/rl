@@ -5,9 +5,12 @@ import environment as env
 
 VERSION_NUMBER = 1.0
 
+
 class Algorithm(object):
+    """Implement a Q-Learning algorithm for Windy Gridworld environment."""
 
     def __init__(self, alpha, epsilon, gamma, king=False, stochastic=False):
+        """Create a new agent."""
         self.alpha = alpha
         self.epsilon = epsilon
         self.gamma = gamma
@@ -22,7 +25,10 @@ class Algorithm(object):
             self.max_wind += 1
 
         # Initialize the Q estimate
-        self.q = np.zeros((env.WORLD_W * env.WORLD_H, self.n_actions * self.max_wind))
+        self.q = np.zeros((
+          env.WORLD_W * env.WORLD_H,
+          self.n_actions * self.max_wind
+        ))
 
         # Initialize first step
         self.state = None
@@ -34,7 +40,7 @@ class Algorithm(object):
         self.iteration = 0
 
     def compute_position(self, action):
-        """Computes the position of 'next' state if 'action' is applied.
+        """Compute the position of 'next' state if 'action' is applied.
 
         Args:
           - action (int): the action to perform.
@@ -81,6 +87,7 @@ class Algorithm(object):
         return (x, y)
 
     def debug(self):
+        """Print information about the state of the agent."""
         message = (
           f"Iteration: {self.iteration}\t"
           f"Time steps: {self.time_step}\t"
@@ -164,11 +171,11 @@ class Algorithm(object):
         """
         # X coordinate of the q estimate is the x coordinate (state[0])
         # multiplied by the y coordinate (state[1])
-        x_coord = self.state[0] * self.state[1]
+        x_coord = (self.state[0] * self.state[1]) + self.state[1]
 
         # Y coordinate of the q estimate is the wind strength (state[2])
         # multiplied by the number of actions
-        y_coord = self.state[2] * self.n_actions
+        y_coord = self.n_actions * self.state[2]
 
         # With probability 1 - epsilon, greedy action is selected
         if random.random() < 1.0 - self.epsilon:
@@ -183,25 +190,25 @@ class Algorithm(object):
                 if estimate > max_estimate:
                     greedy_action = a
                     max_estimate = estimate
-                elif estimate == max_estimate:
-                    if self.state[0] <= env.GOAL_X + 1:
-                        greedy_action = env.ACTION_EAST
-                    elif self.state[1] <= (env.GOAL_Y) and env.WIND[self.state[0]] == 0:
-                        greedy_action = env.ACTION_SOUTH
-                    elif self.state[0] > env.GOAL_X:
-                        greedy_action = env.ACTION_WEST
+                # elif estimate == max_estimate:
+                #    if self.state[0] <= env.GOAL_X + 1:
+                #        greedy_action = env.ACTION_EAST
+                #    elif self.state[1] <= (env.GOAL_Y) and self.state[2] == 0:
+                #        greedy_action = env.ACTION_SOUTH
+                #    elif self.state[0] > env.GOAL_X:
+                #        greedy_action = env.ACTION_WEST
                 # If the estimate is equal, is replaced if it will
                 # make the target closest to the goal
-                # elif estimate == max_estimate:
-                    # nxt_a = self.compute_position(a)
-                    # nxt_g = self.compute_position(greedy_action)
-                    # g_x = env.GOAL_X
-                    # g_y = env.GOAL_Y
+                elif estimate == max_estimate:
+                    nxt_a = self.compute_position(a)
+                    nxt_g = self.compute_position(greedy_action)
+                    g_x = env.GOAL_X
+                    g_y = env.GOAL_Y
 
-                    # dist_a = abs(nxt_a[0] - g_x) + abs(nxt_a[1] - g_y)
-                    # dist_g = abs(nxt_g[0] - g_x) + abs(nxt_g[1] - g_y)
+                    dist_a = abs(nxt_a[0] - g_x) + abs(nxt_a[1] - g_y)
+                    dist_g = abs(nxt_g[0] - g_x) + abs(nxt_g[1] - g_y)
 
-                    # greedy_action = a if random.random() < 0.5 else greedy_action
+                    greedy_action = a if dist_a < dist_g else greedy_action
 
             action = greedy_action
         # With probability epsilon, a random action is selected
@@ -211,8 +218,9 @@ class Algorithm(object):
         return action
 
     def step(self, observation, reward):
+        """Perform a complete step of the algorithm."""
         # Computes the coordinates for the current state
-        prev_s = self.state[0] * self.state[1]
+        prev_s = (self.state[0] * self.state[1]) + self.state[1]
         prev_a = (self.state[2] * self.n_actions) + self.action
 
         # Replace the current state with the new state
@@ -222,7 +230,7 @@ class Algorithm(object):
         self.action = self.select_action()
 
         # Computes the coordinates for the new state
-        new_s = self.state[0] * self.state[1]
+        new_s = (self.state[0] * self.state[1]) + self.state[1]
 
         # Finds the action 'a' with maximum estimate on new state
         max_a = 0
