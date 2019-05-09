@@ -34,6 +34,9 @@ def episode():
         # Only renders the environment if told so
         if render:
             env.render()
+        # If not, only prints debug information
+        else:
+            algo.debug()
 
         # Gets the observation and reward from environment
         obs, reward, done, info = env.step(action)
@@ -43,8 +46,8 @@ def episode():
         if not done:
             action = algo.step(obs, reward)
 
-    if not render:
-        algo.debug()
+    # Prints a newline before starting next episode
+    print("\n")
 
 
 def print_usage(small=True):

@@ -1,3 +1,4 @@
+import sys
 import pickle
 import random
 import numpy as np
@@ -50,33 +51,20 @@ class Algorithm(object):
         y = self.state[1]
 
         # Applies the action to the next position of the agent
-        if action == env.ACTION_NORTH:
+        if action in (env.ACTION_NORTH, env.ACTION_NORTH_EAST, env.ACTION_NORTH_WEST):
             y -= 1
 
-        if action == env.ACTION_NORTH_EAST:
-            x += 1
-            y -= 1
-
-        if action == env.ACTION_EAST:
+        if action in (env.ACTION_EAST, env.ACTION_NORTH_EAST, env.ACTION_SOUTH_EAST):
             x += 1
 
-        if action == env.ACTION_SOUTH_EAST:
-            x += 1
+        if action in (env.ACTION_SOUTH, env.ACTION_SOUTH_EAST, env.ACTION_SOUTH_WEST):
             y += 1
 
-        if action == env.ACTION_SOUTH:
-            y += 1
-
-        if action == env.ACTION_SOUTH_WEST:
-            x -= 1
-            y += 1
-
-        if action == env.ACTION_WEST:
+        if action in (env.ACTION_WEST, env.ACTION_SOUTH_WEST, env.ACTION_NORTH_WEST):
             x -= 1
 
-        if action == env.ACTION_NORTH_WEST:
-            x -= 1
-            y -= 1
+        # Applies to the position the wind push
+        x -= self.state[2]
 
         # Keeps the coordinates within the grid
         x = 0 if x < 0 else x
@@ -89,12 +77,13 @@ class Algorithm(object):
     def debug(self):
         """Print information about the state of the agent."""
         message = (
-          f"Iteration: {self.iteration}\t"
+          f"\rIteration: {self.iteration}\t"
           f"Time steps: {self.time_step}\t"
           f"Total reward: {self.total_reward}"
         )
 
-        print(message)
+        sys.stdout.write(message)
+        sys.stdout.flush()
 
     def load(self, filename):
         """Load an agent's state from filename."""
@@ -175,12 +164,12 @@ class Algorithm(object):
 
         # Y coordinate of the q estimate is the wind strength (state[2])
         # multiplied by the number of actions
-        y_coord = (self.n_actions * self.state[2]) + self.state[2]
+        y_coord = (self.n_actions * self.state[2])
 
         # With probability 1 - epsilon, greedy action is selected
         if random.random() < 1.0 - self.epsilon:
             # Search the greedy action for current state
-            greedy_action = 1
+            greedy_action = 0
             max_estimate = -(2 ** 32)
 
             for a in range(1, self.n_actions):
@@ -190,25 +179,18 @@ class Algorithm(object):
                 if estimate > max_estimate:
                     greedy_action = a
                     max_estimate = estimate
-                elif estimate == max_estimate:
-                    if self.state[0] <= env.GOAL_X + 1:
-                        greedy_action = env.ACTION_EAST
-                    elif self.state[1] <= (env.GOAL_Y) and self.state[2] == 0:
-                        greedy_action = env.ACTION_SOUTH
-                    elif self.state[0] > env.GOAL_X:
-                        greedy_action = env.ACTION_WEST
                 # If the estimate is equal, is replaced if it will
                 # make the target closest to the goal
-                # elif estimate == max_estimate:
-                #    nxt_a = self.compute_position(a)
-                #    nxt_g = self.compute_position(greedy_action)
-                #    g_x = env.GOAL_X
-                #    g_y = env.GOAL_Y
+                elif estimate == max_estimate:
+                    nxt_a = self.compute_position(a)
+                    nxt_g = self.compute_position(greedy_action)
+                    g_x = env.GOAL_X
+                    g_y = env.GOAL_Y
 
-                #    dist_a = abs(nxt_a[0] - g_x) + abs(nxt_a[1] - g_y)
-                #    dist_g = abs(nxt_g[0] - g_x) + abs(nxt_g[1] - g_y)
+                    dist_a = abs(nxt_a[0] - g_x) + abs(nxt_a[1] - g_y)
+                    dist_g = abs(nxt_g[0] - g_x) + abs(nxt_g[1] - g_y)
 
-                #    greedy_action = a if dist_a < dist_g else greedy_action
+                    greedy_action = a if dist_a < dist_g else greedy_action
 
             action = greedy_action
         # With probability epsilon, a random action is selected
