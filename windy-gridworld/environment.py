@@ -1,7 +1,7 @@
-import curses as crs
 import os
 import random
 import time
+import curses as crs
 import numpy as np
 
 # ================================================================== #
@@ -72,13 +72,12 @@ ACTION_NORTH_WEST = 8
 class Environment(object):
     """Implement a simple Windy Gridworld environment.
 
-    A gridworld is a rectangular space formed by cells, at which of
-    them a series of actions are available. On the most simple of the
-    variants there are four actions: north, south, east and west, which
-    deterministically cause the agent to move one cell in the
-    respective direction on the grid. There is also a 'extended' set
-    of actions which can move the agent to the cell on the north-east,
-    north-west, south-east and south-west of the current cell.
+    A gridworld is a rectangular space formed by cells, in which the
+    agent can move. On the most simple of the variants there are four
+    actions: north, south, east and west, that deterministically cause
+    the agent to move one cell in the respective direction on the grid.
+    There is also a 'extended' set of actions which can move the agent
+    to the diagonal adjacent cells of its current position.
 
     The gridworld contains two special cells: the 'start' and the
     'goal', and the task of the agent is to reach the goal as fast as
@@ -90,8 +89,11 @@ class Environment(object):
 
     The addition to a standard gridworld is the presence of 'wind',
     which varies from column to column. The wind causes the agent to
-    move additional cells to the north, depending on the wind
-    'strength' (which is indicated as an integer below each column).
+    move additional cells to the north on its next action, depending
+    on the wind 'strength' (which is indicated as an integer below each
+    column). The wind can also be stochastic, which means that with
+    certain probability, the wind strength shown will be stronger or
+    weaker.
 
     This class provides the standard methods provided by gym
     environments to simulate any algorithm.
@@ -100,7 +102,7 @@ class Environment(object):
       - action (int): the action selected to perform on the current
           time step.
 
-      - actions (set): the set of actions recognized by the
+      - actions (set): the set of valid actions recognized by the
           environment.
 
       - done (bool): a flag that indicates if the episode is done.
@@ -116,7 +118,11 @@ class Environment(object):
 
       - posY (int): the Y coordinate of the agent.
 
-      - stdscr (window): the representation of the terminal window.
+      - stdscr (window): the representation of the terminal window,
+          used for rendering.
+
+      - stochastic (bool): a flag that indicates if the wind behaves
+          on a stochastic way.
     """
 
     def __clear(self):
@@ -131,13 +137,14 @@ class Environment(object):
 
         Args:
           - [extended] (bool): a flag that indicates if the world
-              supports the extended options. Defaults to False.
+              supports the extended actions. Defaults to False.
 
           - [stochastic] (bool): a flag that indicates if the wind
-              behaves in an stochastic manner. Defaults to False.
+              should behave stochastically. Defaults to False.
 
         """
         # Standard gridworld only have the basic four actions
+        # (plus the do-nothing action)
         self.actions = set([
             ACTION_STAND,
             ACTION_NORTH,
@@ -146,8 +153,7 @@ class Environment(object):
             ACTION_WEST
         ])
 
-        # Extended gridworld agents also move diagonally and
-        # stand in place
+        # Extended gridworld agents cans also move diagonally
         if extended:
             self.actions = self.actions.union([
               ACTION_NORTH_EAST,
