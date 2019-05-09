@@ -175,7 +175,7 @@ class Algorithm(object):
 
         # Y coordinate of the q estimate is the wind strength (state[2])
         # multiplied by the number of actions
-        y_coord = self.n_actions * self.state[2]
+        y_coord = (self.n_actions * self.state[2]) + self.state[2]
 
         # With probability 1 - epsilon, greedy action is selected
         if random.random() < 1.0 - self.epsilon:
