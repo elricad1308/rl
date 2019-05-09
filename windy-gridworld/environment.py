@@ -8,65 +8,65 @@ import numpy as np
 #                        Configurable options                        #
 # ================================================================== #
 
-DELAY = 0.1
-"""Time (in seconds) to wait between renders"""
+DELAY = 1
+"""float: Time (in seconds) to wait between renders"""
 
 GOAL_X = 7
-"""X coordinate of the goal position."""
+"""int: X coordinate of the goal position."""
 
 GOAL_Y = 3
-"""Y coordinate of the goal position."""
+"""int: Y coordinate of the goal position."""
 
-MAX_TIME = 1000
-"""Maximum amount of time steps allowed before termination."""
+MAX_TIME = 50
+"""int: Maximum amount of time steps allowed before force termination."""
 
 START_X = 0
-"""X coordinate of the start position."""
+"""int: X coordinate of the start position."""
 
 START_Y = 3
-"""Y coordinate of the start position."""
+"""int: Y coordinate of the start position."""
 
 WIND = np.array([
     0, 0, 0, 1, 1, 1, 2, 2, 1, 0
 ])
-"""Array of wind strengths. It should contain WORLD_W elements."""
+"""numpy.array: Array of wind strengths. It should contain WORLD_W elements."""
 
 WORLD_H = 7
-"""Height (in cells) of the gridworld"""
+"""int: Height (in cells) of the gridworld"""
 
 WORLD_W = 10
-"""Width (in cells) of the gridworld"""
+"""int: Width (in cells) of the gridworld"""
 
 # ================================================================== #
 #                  Class constants (DO NOT MODIFY!)                  #
 # ================================================================== #
 
 ACTION_STAND = 0
-"""Action that makes the agent stand on place"""
+"""int: Action that makes the agent stand on place"""
 
 ACTION_NORTH = 1
-"""Action that moves the agent one cell up"""
+"""int: Action that moves the agent one cell up"""
 
 ACTION_EAST = 2
-"""Action that moves the agent one cell left"""
+"""int: Action that moves the agent one cell left"""
 
 ACTION_SOUTH = 3
-"""Action that moves the agent one cell down"""
+"""int: Action that moves the agent one cell down"""
 
 ACTION_WEST = 4
-"""Action that moves the agent one cell right"""
+"""int: Action that moves the agent one cell right"""
 
 ACTION_NORTH_EAST = 5
-"""Action that moves the agent one cell up and one cell left"""
+"""int: Action that moves the agent one cell up and one cell left"""
 
 ACTION_SOUTH_EAST = 6
-"""Action that moves the agent one cell down and one cell left"""
+"""int: Action that moves the agent one cell down and one cell left"""
 
 ACTION_SOUTH_WEST = 7
-"""Action that moves the agent one cell down and one cell right"""
+"""int: Action that moves the agent one cell down and one cell right"""
 
 ACTION_NORTH_WEST = 8
-"""Action that moves the agent one cell up and one cell right"""
+"""int: Action that moves the agent one cell up and one cell right"""
 
 
 class Environment(object):
@@ -105,14 +105,20 @@ class Environment(object):
       - actions (set): the set of valid actions recognized by the
           environment.
 
+      - current_wind (numpy.array) an array that contains the wind
+          strength changes in stochastic mode.
+
       - done (bool): a flag that indicates if the episode is done.
 
       - goalX (int): the X coordinate of the goal.
 
       - goalY (int): the Y coordinate of the goal.
 
-      - grid (numpy.array): a numpy array that works as the
-          representation of the world.
+      - iteration (int): counter for current iteration.
+
+      - nextX (int): coordinate X of the action selected by the agent.
+
+      - nextY (int): coordinate Y of the action selected by the agent.
 
       - posX (int): the X coordinate of the agent.
 
@@ -123,14 +129,13 @@ class Environment(object):
 
       - stochastic (bool): a flag that indicates if the wind behaves
           on a stochastic way.
-    """
 
-    def __clear(self):
-        """Clear the standard output."""
-        if os.name == 'nt':
-            _ = os.system('cls')
-        else:
-            _ = os.system('clear')
+      - time_count (int): a variable used to keep track of the time.
+
+      - wind_push (int): a variable that holds the vertical wind push
+          to apply on the next move.
+
+    """
 
     def __init__(self, extended=False, stochastic=False):
         """Create a new Environment.
@@ -162,9 +167,6 @@ class Environment(object):
               ACTION_NORTH_WEST
             ])
 
-        # Representation of the gridworld
-        self.grid = np.zeros((WORLD_H, WORLD_W), np.int32)
-
         # Flag that indicates if stochastic wind should be used
         self.stochastic = stochastic
 
@@ -182,7 +184,7 @@ class Environment(object):
 
         Args:
           - stdscr (window): the 'curses' main window object. It is
-              automatically provided when this methos is called through
+              automatically provided when this method is called through
               the 'curses.wrapper' method.
 
         """
@@ -204,51 +206,41 @@ class Environment(object):
         # Defines the color pair for error messages
         crs.init_pair(6, crs.COLOR_RED, crs.COLOR_BLACK)
 
-        # Defines the color pair for warning messages
-        crs.init_pair(7, crs.COLOR_YELLOW, crs.COLOR_BLACK)
-
         # Clears the output before printing
         stdscr.erase()
 
         # Prints the header
-        stdscr.addstr("Windy GridWorld v0.1\n")
+        stdscr.addstr("Windy GridWorld v0.2\n")
         stdscr.addstr("=" * 80)
         stdscr.addstr("\n")
 
+        # Prints the world
         for y in range(WORLD_H):
             for x in range(WORLD_W):
+                is_current = self.posX == x and self.posY == y
                 is_goal = GOAL_X == x and GOAL_Y == y
                 is_next = self.nextX == x and self.nextY == y
-                visits = self.grid[y][x]
-                str_visits = f"{visits:^5}"
 
                 # The current cell is drawn with an X
-                if self.posX == x and self.posY == y:
-                    stdscr.addstr("[")
-                    if self.done:
-                        stdscr.addstr("  X  ", crs.color_pair(4))
-                    else:
-                        stdscr.addstr("  X  ", crs.color_pair(1))
-                    stdscr.addstr("]")
+                if is_current:
+                    cell = "  X  "
+                    color = 4 if self.done else 1
                 # Next action is drawn with yellow foreground
                 elif is_next:
-                    cell_str = "  G  " if is_goal else "     "
-                    stdscr.addstr("[")
-                    stdscr.addstr(cell_str, crs.color_pair(2))
-                    stdscr.addstr("]")
+                    cell = "  G  " if is_goal else "     "
+                    color = 2
                 # Goal cell is drawn with green foreground
                 elif is_goal:
-                    stdscr.addstr("[")
-                    stdscr.addstr("  G  ", crs.color_pair(3))
-                    stdscr.addstr("]")
-                # Unvisited cells are drawn empty
-                elif visits == 0:
-                    stdscr.addstr("[     ]")
-                # Visited cells draw the number of visits
+                    cell = "  G  "
+                    color = 3
+                # All other cells are drawn empty
                 else:
-                    stdscr.addstr("[")
-                    stdscr.addstr(str_visits)
-                    stdscr.addstr("]")
+                    cell = "     "
+                    color = 0
+
+                stdscr.addstr("[")
+                stdscr.addstr(cell, crs.color_pair(color))
+                stdscr.addstr("]")
 
             # Prints the newline
             stdscr.addstr("\n")
@@ -289,14 +281,18 @@ class Environment(object):
             stdscr.addstr(self.inf_msg, crs.color_pair(5))
         elif self.err_msg != "":
             stdscr.addstr(self.err_msg, crs.color_pair(6))
-        elif self.warn_msg != "":
-            stdscr.addstr(self.warn_msg, crs.color_pair(7))
 
         # Flushes to stdout
         stdscr.refresh()
         time.sleep(DELAY)
 
     def close(self):
+        """Close the environment.
+
+        This method does nothing, but is provided to comply with the
+        interface of Gym's environments.
+
+        """
         pass
 
     def render(self):
@@ -335,7 +331,6 @@ class Environment(object):
         # Messages
         self.inf_msg = ""
         self.err_msg = ""
-        self.warn_msg = ""
 
         # Sends the initial observation
         return np.array([
@@ -345,29 +340,27 @@ class Environment(object):
         ])
 
     def step(self, action):
-        """Performs a time step.
+        """Perform a time step.
 
         If the episode is not done (that is, if the goal hasn't been)
         reached, the action provided is checked against the list of
         valid actions: if invalid, no action is performed.
 
-        If the given action is valid, then the agent moves to the
-        'next' position it has stored, and the wind push is applied to
-        its vertical position. If the current position would cause the
-        agent to leave the world, its position is adjusted accordingly.
-
-        Then the 'next' position is computed, based on the given
-        action. If the action would cause the 'next' position to fall
-        of the world, its adjusted accordingly.
+        If the given action is valid, then the agent moves to the new
+        new position determined by the 'action' provided AND the wind
+        push is applied to its vertical position. If the new position
+        would cause the agent to leave the world, its position is
+        adjusted accordingly to keep it within the world.
 
         As return value, the method sends a 4-element tuple: the first
-        one being the 'observation', which is a 2-element numpy array
-        with the 'x' and 'y' coordinates of the agent's current
-        position. The second element is the reward, which as defined
-        by the problem, is always '-1' per time step. The third element
-        is flag that indicates whether the agent has reached its goal
-        or not. Finally, the four element is an empty string, provided
-        only to adhere to Gym's environment 'step' interface.
+        one being the 'observation', which is a 3-element numpy array
+        with the 'x' and 'y' coordinates of the agent's new position,
+        and the wind push to apply on the next move. The second element
+        is the reward, which as defined by the problem, is always '-1'
+        per time step. The third element is flag that indicates whether
+        the agent has reached its goal or not. Finally, the fourth
+        element is an empty string, provided only to adhere to Gym's
+        environment 'step' interface.
 
         If the episode is done (that is, if the goal has been reached),
         then no action is performed, and an empty tuple is returned.
@@ -377,10 +370,11 @@ class Environment(object):
 
         Returns:
           (tuple) a 4-element tuple, as defined on Gym's interface
+
         """
         # Checks if agent is on goal
         if self.done:
-            return np.array([GOAL_X, GOAL_Y]), 0, True, ""
+            return np.array([GOAL_X, GOAL_Y, 0]), 0, True, ""
 
         # Increase the time count
         self.time_count += 1
@@ -411,72 +405,50 @@ class Environment(object):
         else:
             self.current_wind = np.copy(WIND)
 
-        # Moves the agent to its next position
+        # Moves the agent to the action selected on previous step
         self.posX = self.nextX
         self.posY = self.nextY
 
-        # Applies and updates the wind push
+        # Apply the wind push, and keep the agent within world
         self.posY -= self.wind_push
-        self.nextY = self.posY
-        self.wind_push = self.current_wind[self.posX]
-
-        # Keeps the agent within the grid
-        self.posX = 0 if self.posX < 0 else self.posX
-        self.posX = WORLD_W - 1 if self.posX >= WORLD_W else self.posX
         self.posY = 0 if self.posY < 0 else self.posY
         self.posY = WORLD_H - 1 if self.posY >= WORLD_H else self.posY
 
-        # Checks if goal has been reached
-        self.done = (self.posX == GOAL_X and self.posY == GOAL_Y) or self.time_count >= MAX_TIME
+        # Stores the wind push for the next move
+        self.wind_push = self.current_wind[self.posX]
 
-        # Applies the action to the next position of the agent
-        if not self.done and self.action == ACTION_NORTH:
+        # Computes the coordinates of the action selected
+        self.nextX = self.posX
+        self.nextY = self.posY
+
+        # Actions that move the agent to the north
+        if self.action in (ACTION_NORTH, ACTION_NORTH_EAST, ACTION_NORTH_WEST):
             self.nextY -= 1
 
-        if not self.done and self.action == ACTION_NORTH_EAST:
-            self.nextX += 1
-            self.nextY -= 1
-
-        if not self.done and self.action == ACTION_EAST:
+        # Actions that move the agent to the east
+        if self.action in (ACTION_EAST, ACTION_NORTH_EAST, ACTION_SOUTH_EAST):
             self.nextX += 1
 
-        if not self.done and self.action == ACTION_SOUTH_EAST:
-            self.nextX += 1
+        # Actions that move the agent to the south
+        if self.action in (ACTION_SOUTH, ACTION_SOUTH_EAST, ACTION_SOUTH_WEST):
             self.nextY += 1
 
-        if not self.done and self.action == ACTION_SOUTH:
-            self.nextY += 1
-
-        if not self.done and self.action == ACTION_SOUTH_WEST:
-            self.nextX -= 1
-            self.nextY += 1
-
-        if not self.done and self.action == ACTION_WEST:
+        # Actions that move the agent to the west
+        if self.action in (ACTION_WEST, ACTION_SOUTH_WEST, ACTION_NORTH_WEST):
             self.nextX -= 1
 
-        if not self.done and self.action == ACTION_NORTH_WEST:
-            self.nextX -= 1
-            self.nextY -= 1
-
-        # Checks if agent would leave the grid to show a warning
-        if not self.done and self.nextX < 0 or self.nextX >= WORLD_W:
-            self.warn_msg = "WARNING! Agent fell of the world"
-        elif not self.done and self.nextY < 0 or self.nextY >= WORLD_H:
-            self.warn_msg = "WARNING! Agent fell of the world"
-        else:
-            self.warn_msg = ""
-
-        # Keeps the next action within the grid
+        # Keeps the agent within the world
         self.nextX = 0 if self.nextX < 0 else self.nextX
         self.nextX = WORLD_W - 1 if self.nextX >= WORLD_W else self.nextX
         self.nextY = 0 if self.nextY < 0 else self.nextY
         self.nextY = WORLD_H - 1 if self.nextY >= WORLD_H else self.nextY
 
-        # Checks if agent is on goal
-        if self.done:
-            self.inf_msg = "Success! Goal reached."
-        else:
-            self.inf_msg = ""
+        # Checks if goal has been reached
+        self.done = (
+          (self.posX == GOAL_X and self.posY == GOAL_Y)
+          or self.time_count >= MAX_TIME
+        )
+        self.inf_msg = "Success! Goal reached." if self.done else ""
 
         # Observation is a numpy array with current X and Y,
         # and next wind push
