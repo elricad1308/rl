@@ -47,7 +47,7 @@ def episode():
             action = algo.step(obs, reward)
 
     # Prints a newline before starting next episode
-    print("\n")
+    print("")
 
 
 def print_usage(small=True):

@@ -8,7 +8,7 @@ import numpy as np
 #                        Configurable options                        #
 # ================================================================== #
 
-DELAY = 1
+DELAY = 0.1
 """float: Time (in seconds) to wait between renders"""
 
 GOAL_X = 7
@@ -17,7 +17,7 @@ GOAL_X = 7
 GOAL_Y = 3
 """int: Y coordinate of the goal position."""
 
-MAX_TIME = 50
+MAX_TIME = 10000
 """int: Maximum amount of time steps allowed before force termination."""
 
 START_X = 0
