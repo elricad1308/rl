@@ -77,9 +77,9 @@ class Algorithm(object):
     def debug(self):
         """Print information about the state of the agent."""
         message = (
-          f"\rIteration: {self.iteration}\t"
-          f"Time steps: {self.time_step}\t"
-          f"Total reward: {self.total_reward}"
+          f"\rIteration: {self.iteration:<6}\t"
+          f"Time steps: {self.time_step:<6}\t"
+          f"Total reward: {self.total_reward:7}"
         )
 
         sys.stdout.write(message)
