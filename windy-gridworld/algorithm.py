@@ -74,20 +74,26 @@ class Algorithm(object):
 
         return (x, y)
 
-    def debug(self, cycles, avg):
+    def debug(self, cycles, avg_reward, avg_ep_length):
         """Print information about the state of the agent."""
-        avg = avg + ((1.0 / self.iteration) * (self.total_reward - avg))
+        avg_reward += (
+            (1.0 / self.iteration) * (self.total_reward - avg_reward)
+        )
+        avg_ep_length += (
+            (1.0 / self.iteration) * (self.time_step - avg_ep_length)
+        )
 
         message = (
           f"\rEpisode: {self.iteration:>6} / {cycles:>6}\t"
           f"Duration: {self.time_step:>6} steps\t"
-          f"Average reward: {avg}"
+          f"Avg duration: {avg_ep_length:.5f}\t"
+          f"Avg reward: {avg_reward:.5f}\t"
         )
 
         sys.stdout.write(message)
         sys.stdout.flush()
 
-        return avg
+        return avg_reward, avg_ep_length
 
     def get_position(self, action=0):
         """Get the position of current state on the Q estimate matrix.

@@ -7,7 +7,7 @@ from q_learning import QLearning
 from expected_sarsa import ExpectedSarsa
 
 
-def episode(cycles):
+def episode(cycles, avg_reward, avg_ep_length):
     """Perform a complete episode.
 
     First, the environment and the algorithm are reset to their default
@@ -31,9 +31,6 @@ def episode(cycles):
     # This flag determines the end of the episode
     done = False
 
-    # Average reward
-    avg = 0
-
     # Repeat until the end of the episode
     while not done:
         # Only renders the environment if told so
@@ -48,7 +45,9 @@ def episode(cycles):
 
     # If done and not render, then prints debug information
     if not render:
-        avg = algo.debug(cycles, avg)
+        avg_reward, avg_ep_length = algo.debug(cycles, avg_reward, avg_ep_length)
+
+    return avg_reward, avg_ep_length
 
 
 def print_usage(small=True):
@@ -118,10 +117,14 @@ if __name__ == "__main__":
         sys.exit(2)
 
     # Alpha, cycles, epsilon and gamma values
-    alpha = 0.9
-    cycles = 1000
-    epsilon = 0.05
+    alpha = 0.5
+    cycles = 5
+    epsilon = 0.1
     gamma = 0.9
+
+    # Average reward and episode length
+    avg_reward = 0
+    avg_ep_length = 0
 
     # Agent's input file
     input = ""
@@ -208,7 +211,7 @@ if __name__ == "__main__":
 
     # Run the simulation for the given number of episodes
     for _ in range(cycles):
-        episode(cycles)
+        avg_reward, avg_ep_length = episode(cycles, avg_reward, avg_ep_length)
 
     # If told so, save the agent
     if output:
