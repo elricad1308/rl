@@ -224,7 +224,7 @@ class Environment(object):
                 # The current cell is drawn with an X
                 if is_current:
                     cell = "  X  "
-                    color = 4 if self.done else 1
+                    color = 4 if self.done and is_goal else 1
                 # Next action is drawn with yellow foreground
                 elif is_next:
                     cell = "  G  " if is_goal else "     "
@@ -284,7 +284,7 @@ class Environment(object):
 
         # Flushes to stdout
         stdscr.refresh()
-        time.sleep(DELAY * 20 if self.done else DELAY)
+        time.sleep(DELAY * 50 if self.done else DELAY)
 
     def close(self):
         """Close the environment.
@@ -444,11 +444,9 @@ class Environment(object):
         self.nextY = WORLD_H - 1 if self.nextY >= WORLD_H else self.nextY
 
         # Checks if goal has been reached
-        self.done = (
-          (self.posX == GOAL_X and self.posY == GOAL_Y)
-          or self.time_count >= MAX_TIME
-        )
-        self.inf_msg = "Success! Goal reached." if self.done else ""
+        in_goal = (self.posX == GOAL_X and self.posY == GOAL_Y)
+        self.done = (in_goal or self.time_count >= MAX_TIME)
+        self.inf_msg = "Success! Goal reached." if in_goal else ""
 
         # Observation is a numpy array with current X and Y,
         # and next wind push
