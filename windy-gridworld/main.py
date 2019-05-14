@@ -1,4 +1,5 @@
 import sys
+import time
 import getopt
 import environment
 
@@ -44,7 +45,9 @@ def episode(cycles, avg_reward, avg_ep_length):
         action = algo.step(obs, reward)
 
     # If done and not render, then prints debug information
-    if not render:
+    if render:
+        env.render()
+    else:
         avg_reward, avg_ep_length = algo.debug(cycles, avg_reward, avg_ep_length)
 
     return avg_reward, avg_ep_length

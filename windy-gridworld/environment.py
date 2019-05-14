@@ -17,7 +17,7 @@ GOAL_X = 7
 GOAL_Y = 3
 """int: Y coordinate of the goal position."""
 
-MAX_TIME = 100000
+MAX_TIME = 1000
 """int: Maximum amount of time steps allowed before force termination."""
 
 START_X = 0
@@ -284,7 +284,7 @@ class Environment(object):
 
         # Flushes to stdout
         stdscr.refresh()
-        time.sleep(DELAY)
+        time.sleep(DELAY * 20 if self.done else DELAY)
 
     def close(self):
         """Close the environment.
