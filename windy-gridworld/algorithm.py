@@ -86,8 +86,8 @@ class Algorithm(object):
         message = (
           f"\rEpisode: {self.iteration:>6} / {cycles:>6}\t"
           f"Duration: {self.time_step:>6} steps\t"
-          f"Avg duration: {avg_ep_length:.5f}\t"
-          f"Avg reward: {avg_reward:.5f}\t"
+          f"Avg duration: {avg_ep_length:>10.4f}\t"
+          f"Avg reward: {avg_reward:>10.4f}\t"
         )
 
         sys.stdout.write(message)
