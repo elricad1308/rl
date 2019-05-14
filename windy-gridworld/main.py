@@ -2,12 +2,12 @@ import sys
 import getopt
 import environment
 
-import sarsa
-import q_learning
-import expected_sarsa as expected
+from sarsa import Sarsa
+from q_learning import QLearning
+from expected_sarsa import ExpectedSarsa
 
 
-def episode():
+def episode(cycles):
     """Perform a complete episode.
 
     First, the environment and the algorithm are reset to their default
@@ -21,6 +21,8 @@ def episode():
 
     Finally, information about the state of the agent is printed.
 
+    Args:
+      - cycles (int): the maximum number of cycles to perform.
     """
     # Resets the environment
     obs = env.reset()
@@ -29,25 +31,24 @@ def episode():
     # This flag determines the end of the episode
     done = False
 
+    # Average reward
+    avg = 0
+
     # Repeat until the end of the episode
     while not done:
         # Only renders the environment if told so
         if render:
             env.render()
-        # If not, only prints debug information
-        else:
-            algo.debug()
 
         # Gets the observation and reward from environment
         obs, reward, done, info = env.step(action)
 
         # Send observation and rewards to the algorithm
-        # (only if the simulation is not done)
-        if not done:
-            action = algo.step(obs, reward)
+        action = algo.step(obs, reward)
 
-    # Prints a newline before starting next episode
-    print("")
+    # If done and not render, then prints debug information
+    if not render:
+        avg = algo.debug(cycles, avg)
 
 
 def print_usage(small=True):
@@ -189,11 +190,11 @@ if __name__ == "__main__":
 
     # Create an instance of the algorithm
     if method == "sarsa":
-        algo = sarsa.Algorithm(alpha, epsilon, gamma, king, stochastic)
+        algo = Sarsa(alpha, epsilon, gamma, king, stochastic)
     elif method == "qlearning":
-        algo = q_learning.Algorithm(alpha, epsilon, gamma, king, stochastic)
+        algo = QLearning(alpha, epsilon, gamma, king, stochastic)
     elif method == "expected":
-        algo = expected.Algorithm(alpha, epsilon, gamma, king, stochastic)
+        algo = ExpectedSarsa(alpha, epsilon, gamma, king, stochastic)
     else:
         print_usage()
         sys.exit(2)
@@ -207,7 +208,7 @@ if __name__ == "__main__":
 
     # Run the simulation for the given number of episodes
     for _ in range(cycles):
-        episode()
+        episode(cycles)
 
     # If told so, save the agent
     if output:
