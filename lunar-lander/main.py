@@ -10,15 +10,15 @@ import expected_sarsa
 # found by the interpreter!
 
 # Path to gym on Fedora Linux
-sys.path.append("/usr/local/lib/python3.7/site-packages")
+# sys.path.append("/usr/local/lib/python3.7/site-packages")
 
 # Path to gym on the cluster
 # sys.path.append("/lustre/users/josea/.local/lib/python3.6/site-packages")
 
-import gym
+import gymnasium as gym
 
 
-def episode():
+def episode(render=False):
     """Perform a complete episode.
 
     First, the environment and the algorithm are reset to their default
@@ -37,7 +37,7 @@ def episode():
 
     """
     # Resets the environtment
-    obs = env.reset()
+    obs, info = env.reset()
 
     # Choose action from initial observation
     action = algo.reset(obs)
@@ -52,7 +52,8 @@ def episode():
             env.render()
 
         # Gets the observation and rewards from environment
-        obs, reward, done, info = env.step(action)
+        obs, reward, done, truncated, info = env.step(action)
+        done = done or truncated
 
         # Send observation and rewards to the algorithm
         # (only if the simulation is not done)
@@ -64,6 +65,11 @@ def episode():
 
     # Prints information about the episode
     algo.debug()
+
+    # Resets the environment for the next episode
+    obs, info = env.reset()
+    action = algo.reset(obs)
+    done = False
 
 
 def print_usage(small=True):
@@ -109,7 +115,7 @@ if __name__ == "__main__":
       "gamma=",
       "help",
       "input=",
-      "method="
+      "method=",
       "output=",
       "render",
       "test"
@@ -202,7 +208,7 @@ if __name__ == "__main__":
         sys.exit(2)
 
     # Loads the environment
-    env = gym.make('LunarLander-v2')
+    env = gym.make('LunarLander-v3', render_mode='human')
 
     # If told so, load a saved agent
     if input:
@@ -210,7 +216,7 @@ if __name__ == "__main__":
 
     # Run the simulation for the given number of episodes
     for _ in range(cycles):
-        episode()
+        episode(render)
 
     # If told so, save the agent
     if output:

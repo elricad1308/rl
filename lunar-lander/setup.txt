@@ -1,0 +1,21 @@
+(Opcional) Configura un entorno virtual
+
+python -m venv ruta/al/venv
+
+(Opcional) Activa el entorno virtual
+
+(En Windows): C:\ruta\al\venv\Scripts\Activate.ps1
+(En Linux/Mac): source ruta/al/venv/Scripts activate
+
+Instala dependencias
+
+pip install -r requirements.txt
+
+Ejecuta una de las versiones entrenadas
+
+python main.py --method sarsa --input entrega/sarsa.bin --cycles 10 --render
+python main.py --method qlearning --input entrega/qlearning.bin --cycles 10 --render
+python main.py --method expected --input entrega/expected.bin --cycles 10 --render
+
+(Opcional) Ve el comportamiento de un modelo no entrenado
+python main.py --method [ sarsa | qlearning | expected | onpmc | offpmc ] --cycles 10 --render

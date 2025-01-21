@@ -78,7 +78,7 @@ def print_usage(small=True):
         )
     else:
         usage = (
-          f"main.py | Executes the Lunar Landing environment.\n"
+          f"main.py | Executes the Windy GridWorld environment.\n"
           f"  Arguments:\n"
           f"\t-m|--method <sarsa | qlearning | expected>\n"
           f"\t[-a | --alpha]\t\t: Alpha value for the algorithm.\n"
